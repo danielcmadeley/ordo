@@ -1,0 +1,22 @@
+{
+  "name": "livestore-todo-auth-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:web": "bun run --filter @repo/web dev",
+    "dev:api": "bun run --filter @repo/api dev",
+    "typecheck": "bun run --filter '*' typecheck",
+    "deploy:api": "bun run --filter @repo/api deploy",
+    "db:generate": "bun run --filter @repo/api db:generate",
+    "db:migrate": "bun run --filter @repo/api db:migrate"
+  },
+  "devDependencies": {
+    "dotenv": "^17.3.1",
+    "typescript": "^5.7.2"
+  }
+}

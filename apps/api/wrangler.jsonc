@@ -1,0 +1,46 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "livestore-todo-auth-api",
+	"compatibility_date": "2025-09-02",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"main": "./src/index.ts",
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "SYNC_BACKEND_DO",
+				"class_name": "SyncBackendDO"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"SyncBackendDO"
+			]
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "auth_db",
+			"database_name": "react-vite-tanstack-router",
+			"database_id": "69f43663-c2c9-4efb-9783-dea3d28c661a",
+			"migrations_dir": "../../drizzle"
+		}
+	],
+	"vars": {
+		"BETTER_AUTH_URL": "https://api.getordo.co",
+		"GOOGLE_CLIENT_ID": "246757812431-a1nev5qn06qt9dqcpiohajmt59kvss3q.apps.googleusercontent.com"
+	},
+	"routes": [
+		{
+			"pattern": "api.getordo.co",
+			"zone_name": "getordo.co",
+			"custom_domain": true
+		}
+	],
+	"workers_dev": true,
+	"preview_urls": true
+}
