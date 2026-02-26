@@ -1,0 +1,35 @@
+.simple-editor-wrapper {
+  --tt-toolbar-height: 44px;
+  --tt-theme-text: var(--tt-gray-light-900);
+  width: 100%;
+  min-height: 460px;
+  overflow: auto;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+
+  .dark & {
+    --tt-theme-text: var(--tt-gray-dark-900);
+  }
+}
+
+.simple-editor-content {
+  max-width: none;
+  width: 100%;
+  min-height: 460px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor {
+  flex: 1;
+  min-height: 400px;
+  padding: 1.5rem 1.5rem 6rem;
+}
+
+@media screen and (max-width: 480px) {
+  .simple-editor-content .tiptap.ProseMirror.simple-editor {
+    padding: 1rem 1rem 6rem;
+  }
+}

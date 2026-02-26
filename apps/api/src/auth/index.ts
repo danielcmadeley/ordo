@@ -56,10 +56,14 @@ function createAuth(env?: AuthEnv, cf?: IncomingRequestCfProperties) {
           enabled: true,
         },
         socialProviders: {
-          google: {
-            clientId: env?.GOOGLE_CLIENT_ID as string,
-            clientSecret: env?.GOOGLE_CLIENT_SECRET as string,
-          },
+          ...(env?.GOOGLE_CLIENT_ID && env?.GOOGLE_CLIENT_SECRET
+            ? {
+                google: {
+                  clientId: env.GOOGLE_CLIENT_ID,
+                  clientSecret: env.GOOGLE_CLIENT_SECRET,
+                },
+              }
+            : {}),
         },
         rateLimit: {
           enabled: true,

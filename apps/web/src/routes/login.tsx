@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import authClient from '@/lib/authClient'
+import authClient, { invalidateSessionCache } from '@/lib/authClient'
 import { redirectAuthenticatedUser } from '@/lib/auth-guards'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -65,6 +65,7 @@ function LoginPage() {
         return
       }
 
+      invalidateSessionCache()
       navigate({ to: '/' })
     } catch {
       setError('An unexpected error occurred. Please try again.')

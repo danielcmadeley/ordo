@@ -1,33 +1,18 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getSessionWithFallback, type SessionData } from '@/lib/authClient'
+import { useSession } from '@/lib/session-context'
 
-type CurrentUser = NonNullable<SessionData['user']>
+function useCurrentUser() {
+  const { session, isLoading, reload } = useSession()
 
-function useCurrentUser(refreshKey?: string) {
-  const [user, setUser] = useState<CurrentUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const user = session?.user?.id && session?.user?.email
+    ? {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        image: session.user.image,
+      }
+    : null
 
-  const loadUser = useCallback(async () => {
-    try {
-      const session = await getSessionWithFallback()
-      setUser(session?.user || null)
-    } catch {
-      setUser(null)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    setIsLoading(true)
-    loadUser()
-  }, [loadUser, refreshKey])
-
-  return {
-    user,
-    isLoading,
-    reloadUser: loadUser,
-  }
+  return { user, isLoading, reloadUser: reload }
 }
 
 export { useCurrentUser }

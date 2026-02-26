@@ -13,3 +13,4 @@ count.txt
 todos.json
 apps/api/.dev.vars
 .dev.vars
+plans/*

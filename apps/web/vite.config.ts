@@ -15,9 +15,6 @@ export default defineConfig({
     livestoreDevtoolsPlugin({ schemaPath: '../../packages/shared/src/livestore-schema.ts' }),
     VitePWA({
       registerType: 'autoUpdate',
-      devOptions: {
-        enabled: true
-      },
       includeAssets: ['favicon.svg', 'apple-touch-icon.svg'],
       manifest: {
         name: 'Ordo - Task Management',

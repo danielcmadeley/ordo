@@ -11,8 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
+import { Route as JournalRouteImport } from './routes/journal'
+import { Route as FinanceRouteImport } from './routes/finance'
+import { Route as CrmRouteImport } from './routes/crm'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProjectManagerTasksRouteImport } from './routes/project-manager/tasks'
+import { Route as ProjectManagerProjectsRouteImport } from './routes/project-manager/projects'
+import { Route as ProjectManagerMilestonesRouteImport } from './routes/project-manager/milestones'
+import { Route as ProjectManagerInboxRouteImport } from './routes/project-manager/inbox'
+import { Route as ProjectManagerDashboardRouteImport } from './routes/project-manager/dashboard'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -24,9 +32,24 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InboxRoute = InboxRouteImport.update({
-  id: '/inbox',
-  path: '/inbox',
+const KnowledgeBaseRoute = KnowledgeBaseRouteImport.update({
+  id: '/knowledge-base',
+  path: '/knowledge-base',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalRoute = JournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceRoute = FinanceRouteImport.update({
+  id: '/finance',
+  path: '/finance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmRoute = CrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -34,39 +57,134 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectManagerTasksRoute = ProjectManagerTasksRouteImport.update({
+  id: '/project-manager/tasks',
+  path: '/project-manager/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectManagerProjectsRoute = ProjectManagerProjectsRouteImport.update({
+  id: '/project-manager/projects',
+  path: '/project-manager/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectManagerMilestonesRoute =
+  ProjectManagerMilestonesRouteImport.update({
+    id: '/project-manager/milestones',
+    path: '/project-manager/milestones',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ProjectManagerInboxRoute = ProjectManagerInboxRouteImport.update({
+  id: '/project-manager/inbox',
+  path: '/project-manager/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectManagerDashboardRoute = ProjectManagerDashboardRouteImport.update({
+  id: '/project-manager/dashboard',
+  path: '/project-manager/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/inbox': typeof InboxRoute
+  '/crm': typeof CrmRoute
+  '/finance': typeof FinanceRoute
+  '/journal': typeof JournalRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/project-manager/dashboard': typeof ProjectManagerDashboardRoute
+  '/project-manager/inbox': typeof ProjectManagerInboxRoute
+  '/project-manager/milestones': typeof ProjectManagerMilestonesRoute
+  '/project-manager/projects': typeof ProjectManagerProjectsRoute
+  '/project-manager/tasks': typeof ProjectManagerTasksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/inbox': typeof InboxRoute
+  '/crm': typeof CrmRoute
+  '/finance': typeof FinanceRoute
+  '/journal': typeof JournalRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/project-manager/dashboard': typeof ProjectManagerDashboardRoute
+  '/project-manager/inbox': typeof ProjectManagerInboxRoute
+  '/project-manager/milestones': typeof ProjectManagerMilestonesRoute
+  '/project-manager/projects': typeof ProjectManagerProjectsRoute
+  '/project-manager/tasks': typeof ProjectManagerTasksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/inbox': typeof InboxRoute
+  '/crm': typeof CrmRoute
+  '/finance': typeof FinanceRoute
+  '/journal': typeof JournalRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/project-manager/dashboard': typeof ProjectManagerDashboardRoute
+  '/project-manager/inbox': typeof ProjectManagerInboxRoute
+  '/project-manager/milestones': typeof ProjectManagerMilestonesRoute
+  '/project-manager/projects': typeof ProjectManagerProjectsRoute
+  '/project-manager/tasks': typeof ProjectManagerTasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/inbox' | '/login' | '/settings'
+  fullPaths:
+    | '/'
+    | '/crm'
+    | '/finance'
+    | '/journal'
+    | '/knowledge-base'
+    | '/login'
+    | '/settings'
+    | '/project-manager/dashboard'
+    | '/project-manager/inbox'
+    | '/project-manager/milestones'
+    | '/project-manager/projects'
+    | '/project-manager/tasks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/inbox' | '/login' | '/settings'
-  id: '__root__' | '/' | '/inbox' | '/login' | '/settings'
+  to:
+    | '/'
+    | '/crm'
+    | '/finance'
+    | '/journal'
+    | '/knowledge-base'
+    | '/login'
+    | '/settings'
+    | '/project-manager/dashboard'
+    | '/project-manager/inbox'
+    | '/project-manager/milestones'
+    | '/project-manager/projects'
+    | '/project-manager/tasks'
+  id:
+    | '__root__'
+    | '/'
+    | '/crm'
+    | '/finance'
+    | '/journal'
+    | '/knowledge-base'
+    | '/login'
+    | '/settings'
+    | '/project-manager/dashboard'
+    | '/project-manager/inbox'
+    | '/project-manager/milestones'
+    | '/project-manager/projects'
+    | '/project-manager/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  InboxRoute: typeof InboxRoute
+  CrmRoute: typeof CrmRoute
+  FinanceRoute: typeof FinanceRoute
+  JournalRoute: typeof JournalRoute
+  KnowledgeBaseRoute: typeof KnowledgeBaseRoute
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
+  ProjectManagerDashboardRoute: typeof ProjectManagerDashboardRoute
+  ProjectManagerInboxRoute: typeof ProjectManagerInboxRoute
+  ProjectManagerMilestonesRoute: typeof ProjectManagerMilestonesRoute
+  ProjectManagerProjectsRoute: typeof ProjectManagerProjectsRoute
+  ProjectManagerTasksRoute: typeof ProjectManagerTasksRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,11 +203,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/inbox': {
-      id: '/inbox'
-      path: '/inbox'
-      fullPath: '/inbox'
-      preLoaderRoute: typeof InboxRouteImport
+    '/knowledge-base': {
+      id: '/knowledge-base'
+      path: '/knowledge-base'
+      fullPath: '/knowledge-base'
+      preLoaderRoute: typeof KnowledgeBaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal': {
+      id: '/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof JournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/finance': {
+      id: '/finance'
+      path: '/finance'
+      fullPath: '/finance'
+      preLoaderRoute: typeof FinanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm': {
+      id: '/crm'
+      path: '/crm'
+      fullPath: '/crm'
+      preLoaderRoute: typeof CrmRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -99,14 +238,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/project-manager/tasks': {
+      id: '/project-manager/tasks'
+      path: '/project-manager/tasks'
+      fullPath: '/project-manager/tasks'
+      preLoaderRoute: typeof ProjectManagerTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/project-manager/projects': {
+      id: '/project-manager/projects'
+      path: '/project-manager/projects'
+      fullPath: '/project-manager/projects'
+      preLoaderRoute: typeof ProjectManagerProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/project-manager/milestones': {
+      id: '/project-manager/milestones'
+      path: '/project-manager/milestones'
+      fullPath: '/project-manager/milestones'
+      preLoaderRoute: typeof ProjectManagerMilestonesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/project-manager/inbox': {
+      id: '/project-manager/inbox'
+      path: '/project-manager/inbox'
+      fullPath: '/project-manager/inbox'
+      preLoaderRoute: typeof ProjectManagerInboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/project-manager/dashboard': {
+      id: '/project-manager/dashboard'
+      path: '/project-manager/dashboard'
+      fullPath: '/project-manager/dashboard'
+      preLoaderRoute: typeof ProjectManagerDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  InboxRoute: InboxRoute,
+  CrmRoute: CrmRoute,
+  FinanceRoute: FinanceRoute,
+  JournalRoute: JournalRoute,
+  KnowledgeBaseRoute: KnowledgeBaseRoute,
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
+  ProjectManagerDashboardRoute: ProjectManagerDashboardRoute,
+  ProjectManagerInboxRoute: ProjectManagerInboxRoute,
+  ProjectManagerMilestonesRoute: ProjectManagerMilestonesRoute,
+  ProjectManagerProjectsRoute: ProjectManagerProjectsRoute,
+  ProjectManagerTasksRoute: ProjectManagerTasksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -26,7 +26,14 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.use('*', cors({
   origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:4173', 'http://localhost:5173', 'https://ordo-6zh.pages.dev', 'https://app.getordo.co'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  allowHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Cookie',
+    'X-Better-Auth-CSRF',
+    'X-Better-Auth-Callback-URL',
+    'X-Requested-With',
+  ],
   credentials: true,
 }))
 
