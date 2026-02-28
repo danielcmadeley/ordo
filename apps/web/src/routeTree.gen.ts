@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
-import { Route as JournalRouteImport } from './routes/journal'
 import { Route as FinanceRouteImport } from './routes/finance'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as IndexRouteImport } from './routes/index'
@@ -21,6 +20,9 @@ import { Route as ProjectManagerProjectsRouteImport } from './routes/project-man
 import { Route as ProjectManagerMilestonesRouteImport } from './routes/project-manager/milestones'
 import { Route as ProjectManagerInboxRouteImport } from './routes/project-manager/inbox'
 import { Route as ProjectManagerDashboardRouteImport } from './routes/project-manager/dashboard'
+import { Route as JournalTimelineRouteImport } from './routes/journal/timeline'
+import { Route as JournalDashboardRouteImport } from './routes/journal/dashboard'
+import { Route as JournalDailyEntryRouteImport } from './routes/journal/daily-entry'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -35,11 +37,6 @@ const LoginRoute = LoginRouteImport.update({
 const KnowledgeBaseRoute = KnowledgeBaseRouteImport.update({
   id: '/knowledge-base',
   path: '/knowledge-base',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JournalRoute = JournalRouteImport.update({
-  id: '/journal',
-  path: '/journal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceRoute = FinanceRouteImport.update({
@@ -83,15 +80,32 @@ const ProjectManagerDashboardRoute = ProjectManagerDashboardRouteImport.update({
   path: '/project-manager/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JournalTimelineRoute = JournalTimelineRouteImport.update({
+  id: '/journal/timeline',
+  path: '/journal/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalDashboardRoute = JournalDashboardRouteImport.update({
+  id: '/journal/dashboard',
+  path: '/journal/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalDailyEntryRoute = JournalDailyEntryRouteImport.update({
+  id: '/journal/daily-entry',
+  path: '/journal/daily-entry',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/crm': typeof CrmRoute
   '/finance': typeof FinanceRoute
-  '/journal': typeof JournalRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/journal/daily-entry': typeof JournalDailyEntryRoute
+  '/journal/dashboard': typeof JournalDashboardRoute
+  '/journal/timeline': typeof JournalTimelineRoute
   '/project-manager/dashboard': typeof ProjectManagerDashboardRoute
   '/project-manager/inbox': typeof ProjectManagerInboxRoute
   '/project-manager/milestones': typeof ProjectManagerMilestonesRoute
@@ -102,10 +116,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/crm': typeof CrmRoute
   '/finance': typeof FinanceRoute
-  '/journal': typeof JournalRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/journal/daily-entry': typeof JournalDailyEntryRoute
+  '/journal/dashboard': typeof JournalDashboardRoute
+  '/journal/timeline': typeof JournalTimelineRoute
   '/project-manager/dashboard': typeof ProjectManagerDashboardRoute
   '/project-manager/inbox': typeof ProjectManagerInboxRoute
   '/project-manager/milestones': typeof ProjectManagerMilestonesRoute
@@ -117,10 +133,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/crm': typeof CrmRoute
   '/finance': typeof FinanceRoute
-  '/journal': typeof JournalRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/journal/daily-entry': typeof JournalDailyEntryRoute
+  '/journal/dashboard': typeof JournalDashboardRoute
+  '/journal/timeline': typeof JournalTimelineRoute
   '/project-manager/dashboard': typeof ProjectManagerDashboardRoute
   '/project-manager/inbox': typeof ProjectManagerInboxRoute
   '/project-manager/milestones': typeof ProjectManagerMilestonesRoute
@@ -133,10 +151,12 @@ export interface FileRouteTypes {
     | '/'
     | '/crm'
     | '/finance'
-    | '/journal'
     | '/knowledge-base'
     | '/login'
     | '/settings'
+    | '/journal/daily-entry'
+    | '/journal/dashboard'
+    | '/journal/timeline'
     | '/project-manager/dashboard'
     | '/project-manager/inbox'
     | '/project-manager/milestones'
@@ -147,10 +167,12 @@ export interface FileRouteTypes {
     | '/'
     | '/crm'
     | '/finance'
-    | '/journal'
     | '/knowledge-base'
     | '/login'
     | '/settings'
+    | '/journal/daily-entry'
+    | '/journal/dashboard'
+    | '/journal/timeline'
     | '/project-manager/dashboard'
     | '/project-manager/inbox'
     | '/project-manager/milestones'
@@ -161,10 +183,12 @@ export interface FileRouteTypes {
     | '/'
     | '/crm'
     | '/finance'
-    | '/journal'
     | '/knowledge-base'
     | '/login'
     | '/settings'
+    | '/journal/daily-entry'
+    | '/journal/dashboard'
+    | '/journal/timeline'
     | '/project-manager/dashboard'
     | '/project-manager/inbox'
     | '/project-manager/milestones'
@@ -176,10 +200,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CrmRoute: typeof CrmRoute
   FinanceRoute: typeof FinanceRoute
-  JournalRoute: typeof JournalRoute
   KnowledgeBaseRoute: typeof KnowledgeBaseRoute
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
+  JournalDailyEntryRoute: typeof JournalDailyEntryRoute
+  JournalDashboardRoute: typeof JournalDashboardRoute
+  JournalTimelineRoute: typeof JournalTimelineRoute
   ProjectManagerDashboardRoute: typeof ProjectManagerDashboardRoute
   ProjectManagerInboxRoute: typeof ProjectManagerInboxRoute
   ProjectManagerMilestonesRoute: typeof ProjectManagerMilestonesRoute
@@ -208,13 +234,6 @@ declare module '@tanstack/react-router' {
       path: '/knowledge-base'
       fullPath: '/knowledge-base'
       preLoaderRoute: typeof KnowledgeBaseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/journal': {
-      id: '/journal'
-      path: '/journal'
-      fullPath: '/journal'
-      preLoaderRoute: typeof JournalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/finance': {
@@ -273,6 +292,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectManagerDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/journal/timeline': {
+      id: '/journal/timeline'
+      path: '/journal/timeline'
+      fullPath: '/journal/timeline'
+      preLoaderRoute: typeof JournalTimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal/dashboard': {
+      id: '/journal/dashboard'
+      path: '/journal/dashboard'
+      fullPath: '/journal/dashboard'
+      preLoaderRoute: typeof JournalDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal/daily-entry': {
+      id: '/journal/daily-entry'
+      path: '/journal/daily-entry'
+      fullPath: '/journal/daily-entry'
+      preLoaderRoute: typeof JournalDailyEntryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -280,10 +320,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CrmRoute: CrmRoute,
   FinanceRoute: FinanceRoute,
-  JournalRoute: JournalRoute,
   KnowledgeBaseRoute: KnowledgeBaseRoute,
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
+  JournalDailyEntryRoute: JournalDailyEntryRoute,
+  JournalDashboardRoute: JournalDashboardRoute,
+  JournalTimelineRoute: JournalTimelineRoute,
   ProjectManagerDashboardRoute: ProjectManagerDashboardRoute,
   ProjectManagerInboxRoute: ProjectManagerInboxRoute,
   ProjectManagerMilestonesRoute: ProjectManagerMilestonesRoute,

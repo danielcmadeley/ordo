@@ -75,7 +75,13 @@ function getBreadcrumbs(pathname: string, currentProjectView: string): Breadcrum
   }
 
   if (pathname === '/knowledge-base') return [{ label: 'Knowledge Base', to: '/knowledge-base' }]
-  if (pathname === '/journal') return [{ label: 'Journal', to: '/journal' }]
+  if (pathname.startsWith('/journal')) {
+    const base: BreadcrumbItem[] = [{ label: 'Journal', to: '/journal/dashboard' }]
+    if (pathname === '/journal/dashboard') return [...base, { label: 'Dashboard', to: '/journal/dashboard' }]
+    if (pathname === '/journal/daily-entry') return [...base, { label: 'Daily Entry', to: '/journal/daily-entry' }]
+    if (pathname === '/journal/timeline') return [...base, { label: 'Timeline', to: '/journal/timeline' }]
+    return base
+  }
   if (pathname === '/crm') return [{ label: 'CRM', to: '/crm' }]
   if (pathname === '/finance') return [{ label: 'Finance', to: '/finance' }]
   if (pathname === '/settings') return [{ label: 'Settings', to: '/settings' }]
@@ -148,8 +154,8 @@ function AppLayout() {
       key: 'journal',
       label: 'Journal',
       icon: CalendarDaysIcon,
-      active: pathname => pathname === '/journal',
-      goTo: () => navigate({ to: '/journal' }),
+      active: pathname => pathname.startsWith('/journal'),
+      goTo: () => navigate({ to: '/journal/dashboard' }),
     },
     {
       key: 'settings',
