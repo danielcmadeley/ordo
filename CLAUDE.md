@@ -4,17 +4,21 @@
 
 A local-first todo app monorepo demonstrating authentication with LiveStore. Uses:
 - **Frontend** (`apps/web`): React 19 + Vite 7 + TanStack Router + LiveStore + Tailwind CSS 4 + shadcn/ui
+- **Marketing** (`apps/marketing`): Astro 5 + React islands + Tailwind CSS 4 + shadcn/ui
 - **Backend** (`apps/api`): Hono on Cloudflare Workers + BetterAuth + Cloudflare D1 + Durable Objects
 - **Shared** (`packages/shared`): LiveStore schema + BetterAuth Drizzle schema
+- **Design System** (`packages/design-system`): shared shadcn/ui components, theme provider, and tokens used by both web + marketing
 
 ## Monorepo Structure
 
 ```
 apps/
-  web/          # @repo/web — frontend, port 3000
-  api/          # @repo/api — Cloudflare Workers backend, port 3001
+  web/          # @ordo/web — frontend, port 3000
+  marketing/    # marketing site (Astro + React islands)
+  api/          # @ordo/api — Cloudflare Workers backend, port 3001
 packages/
-  shared/       # @repo/shared — shared schemas
+  shared/       # @ordo/shared — shared schemas
+  design-system/ # @ordo/design-system — shared UI + styles + theme infra
 drizzle/        # DB migrations
 ```
 
@@ -47,10 +51,15 @@ bun run deploy:api    # Deploy API to Cloudflare Workers
 |------|---------|
 | `apps/web/src/routes/__root.tsx` | Root route with auth guard |
 | `apps/web/src/routes/login.tsx` | Login/signup page |
+| `apps/marketing/src/pages/index.astro` | Marketing landing page entry |
+| `apps/marketing/src/components/marketing/MarketingPage.tsx` | Marketing page content + theme toggle |
 | `apps/web/src/lib/authClient.ts` | BetterAuth client + offline session fallback |
 | `apps/web/src/lib/session-cache.ts` | Local session cache helpers |
 | `apps/web/src/lib/auth-guards.ts` | Shared route guard helpers |
 | `apps/web/src/hooks/useCurrentUser.ts` | Shared current-user loading hook |
+| `packages/design-system/src/ui/*` | Shared shadcn/ui primitives consumed by web + marketing |
+| `packages/design-system/src/styles.css` | Shared design tokens and base theme |
+| `packages/design-system/src/theme-provider.tsx` | Shared next-themes provider |
 | `apps/web/src/livestore/livestore.worker.ts` | LiveStore worker + sync URL resolution (`VITE_SYNC_URL` / `VITE_API_URL`) |
 | `apps/api/src/index.ts` | Hono app entry + route registration |
 | `apps/api/src/auth/index.ts` | BetterAuth server config |
@@ -67,7 +76,8 @@ bun run deploy:api    # Deploy API to Cloudflare Workers
 - Auth is handled by BetterAuth with credentials stored in Cloudflare D1
 - BetterAuth cookie cache is enabled server-side (`session.cookieCache`) to reduce frequent DB reads
 - Client auth checks use cached session fallback for offline route loading after an online sign-in
-- The shared package exports via path aliases: `@repo/shared/livestore-schema` and `@repo/shared/auth-schema`
+- The shared package exports via path aliases: `@ordo/shared/livestore-schema` and `@ordo/shared/auth-schema`
+- Design system exports via `@ordo/design-system/*` and app aliases map `@/components/ui/*`, `@/lib/utils`, and `@/components/theme-provider` to shared package files
 - TanStack Router uses file-based routing under `apps/web/src/routes/`
 
 ## Environment Setup

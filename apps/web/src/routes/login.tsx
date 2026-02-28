@@ -75,14 +75,14 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <Card className="bg-white shadow-lg">
+        <Card className="bg-card text-card-foreground border-border shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-gray-800">
+            <CardTitle className="text-3xl font-bold text-foreground">
               {isSignUp ? 'Create Account' : 'Welcome Back'}
             </CardTitle>
-            <CardDescription className="text-gray-600">
+            <CardDescription className="text-muted-foreground">
               {isSignUp
                 ? 'Sign up to get started with your todos'
                 : 'Sign in to continue to your todos'}
@@ -112,10 +112,10 @@ function LoginPage() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+                <div className="w-full border-t border-border"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
 
@@ -124,12 +124,12 @@ function LoginPage() {
               onClick={handleGoogleSignIn}
             />
 
-            <div className="text-center text-sm text-gray-600">
+            <div className="text-center text-sm text-muted-foreground">
               {isSignUp ? "Already have an account? " : "Don't have an account? "}
               <Button
                 type="button"
                 variant="link"
-                className="h-auto px-0 text-blue-600 hover:text-blue-700"
+                className="h-auto px-0 text-primary hover:text-primary/80"
                 onClick={() => resetStateForMode(!isSignUp)}
               >
                 {isSignUp ? 'Sign in' : 'Sign up'}

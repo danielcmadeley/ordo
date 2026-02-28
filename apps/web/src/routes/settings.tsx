@@ -1,10 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { requireAuthSession } from '@/lib/auth-guards'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useStore } from '@livestore/react'
-import { tables } from '@repo/shared/livestore-schema'
+import { tables } from '@ordo/shared/livestore-schema'
 import { queryDb } from '@livestore/livestore'
+import { useTheme } from 'next-themes'
+import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
@@ -12,16 +14,18 @@ export const Route = createFileRoute('/settings')({
 })
 
 const ACTION_STYLES: Record<string, string> = {
-  Created: 'bg-blue-100 text-blue-700',
-  Completed: 'bg-green-100 text-green-700',
-  Uncompleted: 'bg-yellow-100 text-yellow-700',
-  Deleted: 'bg-red-100 text-red-700',
-  Updated: 'bg-purple-100 text-purple-700',
+  Created: 'bg-secondary text-secondary-foreground',
+  Completed: 'bg-accent text-accent-foreground',
+  Uncompleted: 'bg-muted text-muted-foreground',
+  Deleted: 'bg-destructive/15 text-destructive',
+  Updated: 'bg-primary/15 text-primary',
 }
 
 const ENTITY_STYLES: Record<string, string> = {
-  task: 'bg-gray-100 text-gray-600',
-  project: 'bg-indigo-100 text-indigo-600',
+  task: 'bg-muted text-muted-foreground',
+  project: 'bg-secondary text-secondary-foreground',
+  notebook: 'bg-accent text-accent-foreground',
+  note: 'bg-primary/15 text-primary',
 }
 
 function formatDate(timestamp: number) {
@@ -36,6 +40,12 @@ function formatDate(timestamp: number) {
 function SettingsPage() {
   const { user: sessionUser, isLoading } = useCurrentUser()
   const { store } = useStore()
+  const { theme, setTheme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const history$ = useMemo(
     () => queryDb(() => tables.history.where({}), { label: 'history' }),
@@ -55,10 +65,10 @@ function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="h-full text-foreground flex items-center justify-center p-6">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading settings...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading settings...</p>
         </div>
       </div>
     )
@@ -66,108 +76,114 @@ function SettingsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="h-full text-foreground flex items-center justify-center p-6">
         <div className="text-center">
-          <p className="text-gray-600">Unable to load user information.</p>
+          <p className="text-muted-foreground">Unable to load user information.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">Settings</h1>
+    <div className="h-full min-h-0 text-foreground">
+      <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[320px_1fr]">
+        <aside className="min-h-0 overflow-auto border-b border-border/60 p-4 lg:border-r lg:border-b-0">
+          <h1 className="mb-4 text-2xl font-semibold tracking-tight">Settings</h1>
 
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Account Information</h2>
+          <section className="rounded-xl border border-border/70 bg-card/70 p-4">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Account</h2>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
-              <div className="px-3 py-2 bg-gray-100 rounded text-gray-800 font-mono text-sm">
-                {user.id}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <div className="px-3 py-2 bg-gray-100 rounded text-gray-800">
-                {user.email}
-              </div>
-            </div>
-
-            {user.name && (
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <div className="px-3 py-2 bg-gray-100 rounded text-gray-800">
-                  {user.name}
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">User ID</label>
+                <div className="rounded-md bg-muted/50 px-3 py-2 font-mono text-sm">{user.id}</div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
+                <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">{user.email}</div>
+              </div>
+
+              {user.name && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Name</label>
+                  <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">{user.name}</div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {user.image && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Profile Picture</label>
-                <img
-                  src={user.image}
-                  alt="Profile"
-                  className="w-16 h-16 rounded-full"
-                />
-              </div>
-            )}
+              {user.image && (
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-muted-foreground">Profile Picture</label>
+                  <img src={user.image} alt="Profile" className="h-16 w-16 rounded-full border border-border/70" />
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="mt-4 rounded-xl border border-border/70 bg-card/70 p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Appearance</h2>
+            <p className="mb-3 text-sm text-muted-foreground">Choose how Ordo looks. Default follows your device setting.</p>
+
+            <div className="inline-flex w-full gap-2 rounded-lg border border-border/70 bg-muted/30 p-1">
+              {(['system', 'light', 'dark'] as const).map(mode => (
+                <Button
+                  key={mode}
+                  size="sm"
+                  variant={theme === mode ? 'default' : 'ghost'}
+                  onClick={() => setTheme(mode)}
+                  className="h-8 flex-1 capitalize"
+                >
+                  {mode}
+                </Button>
+              ))}
+            </div>
+
+            <p className="mt-3 text-xs text-muted-foreground">Current mode: {mounted ? (resolvedTheme ?? 'system') : 'system'}</p>
+          </section>
+        </aside>
+
+        <section className="min-h-0 overflow-auto p-4 lg:p-6">
+          <div className="mb-6 rounded-xl border border-border/70 bg-card/70 p-4 lg:p-5">
+            <h2 className="mb-1 text-lg font-semibold">Activity History</h2>
+            <p className="text-sm text-muted-foreground">{sortedHistory.length} events recorded</p>
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-1">Activity History</h2>
-          <p className="text-sm text-gray-500 mb-4">{sortedHistory.length} events recorded</p>
 
           {sortedHistory.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">
-              No activity yet. Create some tasks or projects to see your history here.
-            </p>
+            <div className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">
+              No activity yet. Create some tasks, notes, or projects to populate your timeline.
+            </div>
           ) : (
-            <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
+            <div className="space-y-2">
               {sortedHistory.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-gray-50"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card/60 px-3 py-2"
                 >
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ACTION_STYLES[entry.action] ?? 'bg-gray-100 text-gray-600'}`}>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ACTION_STYLES[entry.action] ?? 'bg-muted text-muted-foreground'}`}>
                       {entry.action}
                     </span>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ENTITY_STYLES[entry.entityType] ?? 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ENTITY_STYLES[entry.entityType] ?? 'bg-muted text-muted-foreground'}`}>
                       {entry.entityType}
                     </span>
                   </div>
-                  <span className="text-sm text-gray-700 flex-1 truncate">
-                    {entry.entityText}
-                  </span>
-                  <span className="text-xs text-gray-400 shrink-0">
-                    {formatDate(entry.timestamp)}
-                  </span>
+                  <span className="flex-1 truncate text-sm text-foreground/90">{entry.entityText}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{formatDate(entry.timestamp)}</span>
                 </div>
               ))}
             </div>
           )}
-        </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Application</h2>
-
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-gray-600">
-                <strong>Ordo</strong> - Your personal task management app
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Built with React, TanStack Router, LiveStore, and oRPC
-              </p>
-            </div>
+          <div className="mt-6 rounded-xl border border-border/70 bg-card/60 p-4">
+            <h2 className="mb-2 text-lg font-semibold">Application</h2>
+            <p className="text-sm text-muted-foreground">
+              <strong>Ordo</strong> - Your personal task management workspace.
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Built with React, TanStack Router, LiveStore, and oRPC.
+            </p>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   )

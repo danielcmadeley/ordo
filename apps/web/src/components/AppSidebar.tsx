@@ -32,6 +32,12 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const topNavItems = [
   {
@@ -74,7 +80,7 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="md:bottom-[25px] md:h-[calc(100svh-25px)]">
       <SidebarHeader>
         <Link to="/project-manager/inbox" className="flex items-center px-2 py-1 text-lg font-bold group-data-[collapsible=icon]:hidden">
           Ordo
@@ -125,7 +131,7 @@ export function AppSidebar() {
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton
-                    render={<Link to="/project-manager/projects" />}
+                    render={<Link to="/project-manager/projects" search={{ view: 'list', dialog: undefined }} />}
                     isActive={pathname === '/project-manager/projects'}
                   >
                     <HugeiconsIcon icon={Folder01Icon} size={14} />
@@ -173,22 +179,20 @@ export function AppSidebar() {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                render={<Link to="/settings" />}
-                isActive={pathname === '/settings'}
-              >
-                <HugeiconsIcon icon={Settings01Icon} size={16} />
-                <span className="truncate">Settings</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                render={<Link to="/settings" />}
-                isActive={false}
-              >
-                <HugeiconsIcon icon={UserIcon} size={16} />
-                <span className="truncate">{user.name || user.email}</span>
-              </SidebarMenuButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={<SidebarMenuButton isActive={pathname === '/settings'} />}
+                >
+                  <HugeiconsIcon icon={UserIcon} size={16} />
+                  <span className="truncate">{user.name || user.email}</span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onClick={() => navigate({ to: '/settings' })}>
+                    <HugeiconsIcon icon={Settings01Icon} size={16} />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={handleLogout}>

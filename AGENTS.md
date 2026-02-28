@@ -5,19 +5,21 @@
 Always use the `@` import alias instead of relative paths when importing from other files in this project.
 - ✅ Use: `import authClient from '@/lib/authClient'`
 - ❌ Avoid: `import authClient from '../lib/authClient'` or `import authClient from '../../lib/authClient'`
-- The `@` alias maps to `./src/*` and is configured in `tsconfig.json` and `vite.config.ts`
+- The `@` alias maps to `./src/*` and is configured in app tsconfig + bundler config
 - This keeps imports cleaner, more maintainable, and consistent across the codebase
 - Only use relative paths for imports from external packages (node_modules) or when importing files in the same directory
 
 ## Design System Components
 
-**Important**: The `apps/web/src/components/ui/` directory contains our design system components (Button, Dialog, Input, Spinner, etc.).
+**Important**: The design system is now centralized in `packages/design-system/src/`.
 
-- ⚠️ **DO NOT edit** any files in `apps/web/src/components/ui/`
-- ✅ **DO use** these components throughout the app by importing from `@/components/ui/*`
-- 🚫 **DO NOT create** new components directly in the `ui/` folder
+- ✅ **DO use** UI primitives through `@/components/ui/*` in both `apps/web` and `apps/marketing`
+- ✅ App aliases map those imports to `packages/design-system/src/ui/*`
+- ⚠️ **DO NOT create** app-local copies under `apps/web/src/components/ui/` or `apps/marketing/src/components/ui/`
+- ⚠️ For design system changes, edit `packages/design-system/src/ui/*` instead
+- ✅ Shared theme utilities also live in `packages/design-system/src/theme-provider.tsx` and `packages/design-system/src/lib/utils.ts`
 
-These components are part of our standardized design system and should remain consistent across the application. If you need a new component or variant, create it outside of the `ui/` directory.
+These components are part of our standardized cross-app design system. If you need a new component or variant, add it in `packages/design-system/src/ui/`.
 
 ## Project Structure
 
@@ -25,18 +27,21 @@ This is a monorepo with the following structure:
 
 ```
 ├── apps/
-│   ├── api/          # Hono backend on Cloudflare Workers
-│   └── web/          # React + Vite + TanStack Router frontend
+│   ├── api/           # Hono backend on Cloudflare Workers
+│   ├── web/           # React + Vite + TanStack Router frontend
+│   └── marketing/     # Astro + React islands marketing site
 ├── packages/
-│   └── shared/       # Shared schemas (LiveStore, BetterAuth)
-├── drizzle/          # Database migrations
-└── bunfig.toml       # Bun workspace configuration
+│   ├── shared/        # Shared schemas (LiveStore, BetterAuth)
+│   └── design-system/ # Shared UI primitives + theme tokens/provider
+├── drizzle/           # Database migrations
+└── bunfig.toml        # Bun workspace configuration
 ```
 
 ## Technology Stack
 
 - **Package Manager**: Bun
-- **Frontend**: React 19 + Vite 7 + TanStack Router
+- **Frontend App**: React 19 + Vite 7 + TanStack Router
+- **Marketing Site**: Astro 5 + React islands
 - **Backend**: Hono on Cloudflare Workers
 - **Database**: Cloudflare D1 (SQLite)
 - **Auth**: BetterAuth with Google OAuth support
@@ -111,7 +116,7 @@ All routes except `/login` are protected using TanStack Router's `beforeLoad`.
 
 - Use TypeScript for all new code
 - Prefer functional components with hooks
-- Use design system components from `@/components/ui/*`
+- Use design system components from `@/components/ui/*` (resolved from `packages/design-system`)
 - Follow existing naming conventions (PascalCase for components, camelCase for functions/variables)
 - Keep components focused and single-responsibility
 - Remove unused imports and dead code before committing

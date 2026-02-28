@@ -1,5 +1,5 @@
 {
-  "name": "@repo/api",
+  "name": "@ordo/api",
   "version": "0.0.1",
   "type": "module",
   "scripts": {
@@ -17,7 +17,7 @@
     "@orpc/openapi": "^1.13.5",
     "@orpc/server": "^1.13.5",
     "@orpc/zod": "^1.13.5",
-    "@repo/shared": "workspace:*",
+    "@ordo/shared": "workspace:*",
     "@types/node": "^25.3.0",
     "better-auth": "^1.3.34",
     "better-auth-cloudflare": "^0.2.8",

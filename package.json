@@ -1,5 +1,5 @@
 {
-  "name": "livestore-todo-auth-monorepo",
+  "name": "ordo",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.2.17",
@@ -10,13 +10,13 @@
   "scripts": {
     "dev": "turbo run dev",
     "dev:pwa": "turbo run dev:pwa",
-    "dev:web": "turbo run dev --filter=@repo/web",
-    "dev:api": "turbo run dev --filter=@repo/api",
+    "dev:web": "turbo run dev --filter=@ordo/web",
+    "dev:api": "turbo run dev --filter=@ordo/api",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "deploy:api": "turbo run deploy --filter=@repo/api",
-    "db:generate": "turbo run db:generate --filter=@repo/api",
-    "db:migrate": "turbo run db:migrate --filter=@repo/api"
+    "deploy:api": "turbo run deploy --filter=@ordo/api",
+    "db:generate": "turbo run db:generate --filter=@ordo/api",
+    "db:migrate": "turbo run db:migrate --filter=@ordo/api"
   },
   "devDependencies": {
     "dotenv": "^17.3.1",

@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useStore } from '@livestore/react'
 import { queryDb } from '@livestore/livestore'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { events, tables } from '@repo/shared/livestore-schema'
+import { events, tables } from '@ordo/shared/livestore-schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,6 +18,8 @@ export const Route = createFileRoute('/knowledge-base')({
 type NotebookForm = { name: string; description: string }
 
 const EMPTY_NOTEBOOK_FORM: NotebookForm = { name: '', description: '' }
+const EMPTY_NOTE_CONTENT = '<p></p>'
+const AUTOSAVE_DELAY_MS = 700
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
@@ -30,9 +32,10 @@ function KnowledgeBasePage() {
   const [selectedNotebookId, setSelectedNotebookId] = useState<number | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
   const [titleDraft, setTitleDraft] = useState('')
-  const [contentDraft, setContentDraft] = useState('<p></p>')
+  const [contentDraft, setContentDraft] = useState(EMPTY_NOTE_CONTENT)
   const [saveState, setSaveState] = useState<'saved' | 'unsaved' | 'saving'>('saved')
   const autosaveTimerRef = useRef<number | null>(null)
+  const idCounterRef = useRef(0)
 
   const notebooks$ = useMemo(() => queryDb(() => tables.notebooks.where({}), { label: 'knowledge-notebooks' }), [])
   const notes$ = useMemo(() => queryDb(() => tables.notes.where({}), { label: 'knowledge-notes' }), [])
@@ -56,6 +59,39 @@ function KnowledgeBasePage() {
     [notes, selectedNoteId]
   )
 
+  const makeId = useCallback(() => {
+    const now = Date.now()
+    idCounterRef.current = now <= idCounterRef.current ? idCounterRef.current + 1 : now
+    return idCounterRef.current
+  }, [])
+
+  const recordHistory = useCallback((action: string, entityType: string, entityId: number, entityText: string) => {
+    const timestamp = makeId()
+    store.commit(
+      events.historyRecorded({
+        id: timestamp,
+        action,
+        entityType,
+        entityId,
+        entityText,
+        timestamp,
+      })
+    )
+  }, [makeId, store])
+
+  const touchNotebook = useCallback((id: number) => {
+    const activeNotebook = notebooks.find(notebook => notebook.id === id)
+    if (!activeNotebook) return
+    store.commit(
+      events.notebookUpdated({
+        id: activeNotebook.id,
+        name: activeNotebook.name,
+        description: activeNotebook.description,
+        updatedAt: makeId(),
+      })
+    )
+  }, [makeId, notebooks, store])
+
   const selectNotebook = (notebookId: number) => {
     if (notebookId === selectedNotebookId) return
     flushAutosaveNow()
@@ -72,7 +108,7 @@ function KnowledgeBasePage() {
     if (!selectedNote) return false
 
     const cleanTitle = titleDraft.trim() || 'Untitled note'
-    const currentContent = selectedNote.content || '<p></p>'
+    const currentContent = selectedNote.content || EMPTY_NOTE_CONTENT
 
     if (cleanTitle === selectedNote.title && contentDraft === currentContent) {
       setSaveState('saved')
@@ -80,7 +116,7 @@ function KnowledgeBasePage() {
     }
 
     setSaveState('saving')
-    const timestamp = Date.now()
+    const timestamp = makeId()
 
     store.commit(
       events.noteUpdated({
@@ -91,21 +127,11 @@ function KnowledgeBasePage() {
       })
     )
 
-    const activeNotebook = notebooks.find(notebook => notebook.id === selectedNote.notebookId)
-    if (activeNotebook) {
-      store.commit(
-        events.notebookUpdated({
-          id: activeNotebook.id,
-          name: activeNotebook.name,
-          description: activeNotebook.description,
-          updatedAt: timestamp,
-        })
-      )
-    }
+    touchNotebook(selectedNote.notebookId)
 
     setSaveState('saved')
     return true
-  }, [contentDraft, notebooks, selectedNote, store, titleDraft])
+  }, [contentDraft, makeId, selectedNote, store, titleDraft, touchNotebook])
 
   const flushAutosaveNow = useCallback(() => {
     if (autosaveTimerRef.current !== null) {
@@ -149,13 +175,13 @@ function KnowledgeBasePage() {
   useEffect(() => {
     if (!selectedNote) {
       setTitleDraft('')
-      setContentDraft('<p></p>')
+      setContentDraft(EMPTY_NOTE_CONTENT)
       setSaveState('saved')
       return
     }
 
     setTitleDraft(selectedNote.title)
-    setContentDraft(selectedNote.content || '<p></p>')
+    setContentDraft(selectedNote.content || EMPTY_NOTE_CONTENT)
     setSaveState('saved')
   }, [selectedNote])
 
@@ -166,7 +192,7 @@ function KnowledgeBasePage() {
     }
 
     const cleanTitle = titleDraft.trim() || 'Untitled note'
-    const currentContent = selectedNote.content || '<p></p>'
+    const currentContent = selectedNote.content || EMPTY_NOTE_CONTENT
     const hasChanges = cleanTitle !== selectedNote.title || contentDraft !== currentContent
 
     if (!hasChanges) {
@@ -187,7 +213,7 @@ function KnowledgeBasePage() {
     autosaveTimerRef.current = window.setTimeout(() => {
       autosaveTimerRef.current = null
       persistDraft()
-    }, 700)
+    }, AUTOSAVE_DELAY_MS)
 
     return () => {
       if (autosaveTimerRef.current !== null) {
@@ -218,8 +244,8 @@ function KnowledgeBasePage() {
 
   const createNotebook = () => {
     if (!notebookForm.name.trim()) return
-    const id = Date.now()
-    const timestamp = Date.now()
+    const id = makeId()
+    const timestamp = makeId()
     store.commit(
       events.notebookCreated({
         id,
@@ -229,16 +255,7 @@ function KnowledgeBasePage() {
         updatedAt: timestamp,
       })
     )
-    store.commit(
-      events.historyRecorded({
-        id: timestamp + 1,
-        action: 'Created',
-        entityType: 'notebook',
-        entityId: id,
-        entityText: notebookForm.name.trim(),
-        timestamp,
-      })
-    )
+    recordHistory('Created', 'notebook', id, notebookForm.name.trim())
     setNotebookForm(EMPTY_NOTEBOOK_FORM)
     setShowNotebookForm(false)
     setSelectedNotebookId(id)
@@ -248,70 +265,44 @@ function KnowledgeBasePage() {
     const notebook = notebooks.find(item => item.id === id)
     if (!notebook) return
 
-    const timestamp = Date.now()
     const notesInNotebook = notes.filter(note => note.notebookId === id)
     notesInNotebook.forEach(note => {
       store.commit(events.noteDeleted({ id: note.id }))
     })
 
     store.commit(events.notebookDeleted({ id }))
-    store.commit(
-      events.historyRecorded({
-        id: timestamp,
-        action: 'Deleted',
-        entityType: 'notebook',
-        entityId: id,
-        entityText: notebook.name,
-        timestamp,
-      })
-    )
+    recordHistory('Deleted', 'notebook', id, notebook.name)
   }
 
   const createNote = () => {
     if (selectedNotebookId === null) return
     flushAutosaveNow()
-    const id = Date.now()
-    const timestamp = Date.now()
+    const id = makeId()
+    const timestamp = makeId()
     store.commit(
       events.noteCreated({
         id,
         notebookId: selectedNotebookId,
         title: 'Untitled note',
-        content: '<p></p>',
+        content: EMPTY_NOTE_CONTENT,
         createdAt: timestamp,
         updatedAt: timestamp,
       })
     )
-    store.commit(events.noteUpdated({ id, title: 'Untitled note', content: '<p></p>', updatedAt: timestamp + 1 }))
-    store.commit(events.notebookUpdated({
-      id: selectedNotebookId,
-      name: notebooks.find(notebook => notebook.id === selectedNotebookId)?.name ?? 'Notebook',
-      description: notebooks.find(notebook => notebook.id === selectedNotebookId)?.description ?? '',
-      updatedAt: timestamp + 2,
-    }))
+    touchNotebook(selectedNotebookId)
     setSelectedNoteId(id)
   }
 
   const deleteNote = (id: number) => {
     const note = notes.find(item => item.id === id)
     if (!note) return
-    const timestamp = Date.now()
     store.commit(events.noteDeleted({ id }))
-    store.commit(
-      events.historyRecorded({
-        id: timestamp,
-        action: 'Deleted',
-        entityType: 'note',
-        entityId: id,
-        entityText: note.title,
-        timestamp,
-      })
-    )
+    recordHistory('Deleted', 'note', id, note.title)
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-8rem)] max-w-7xl flex-col gap-4 p-6 lg:flex-row">
-      <section className="w-full rounded-2xl border border-border bg-card p-4 lg:w-72 lg:shrink-0">
+    <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[minmax(300px,25%)_1fr]">
+      <section className="min-h-0 overflow-auto border-b border-border/60 p-4 lg:border-r lg:border-b-0">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h1 className="text-lg font-semibold">Notebooks</h1>
           <Button size="sm" onClick={() => setShowNotebookForm(v => !v)}>
@@ -354,10 +345,10 @@ function KnowledgeBasePage() {
                 }
               }}
               className={cn(
-                'w-full cursor-pointer rounded-xl border px-3 py-2 text-left transition-colors',
+                'w-full cursor-pointer rounded-xl px-3 py-2 text-left transition-colors',
                 selectedNotebookId === notebook.id
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border bg-background hover:bg-muted/40'
+                  ? 'bg-primary/10 text-foreground'
+                  : 'hover:bg-muted/40'
               )}
             >
               <div className="flex items-center justify-between gap-2">
@@ -380,14 +371,14 @@ function KnowledgeBasePage() {
             </div>
           ))}
           {sortedNotebooks.length === 0 && (
-            <p className="rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
+            <p className="rounded-xl border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
               No notebooks yet. Create one to start writing.
             </p>
           )}
         </div>
-      </section>
 
-      <section className="w-full rounded-2xl border border-border bg-card p-4 lg:w-80 lg:shrink-0">
+        <div className="my-4 h-px bg-border/60" />
+
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Notes</h2>
           <Button size="sm" onClick={createNote} disabled={selectedNotebookId === null}>
@@ -409,10 +400,10 @@ function KnowledgeBasePage() {
                 }
               }}
               className={cn(
-                'w-full cursor-pointer rounded-xl border px-3 py-2 text-left transition-colors',
+                'w-full cursor-pointer rounded-xl px-3 py-2 text-left transition-colors',
                 selectedNoteId === note.id
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border bg-background hover:bg-muted/40'
+                  ? 'bg-primary/10 text-foreground'
+                  : 'hover:bg-muted/40'
               )}
             >
               <div className="flex items-center justify-between gap-2">
@@ -433,20 +424,20 @@ function KnowledgeBasePage() {
           ))}
 
           {selectedNotebookId !== null && notesForSelectedNotebook.length === 0 && (
-            <p className="rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
+            <p className="rounded-xl border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
               This notebook has no notes yet.
             </p>
           )}
           {selectedNotebookId === null && (
-            <p className="rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
+            <p className="rounded-xl border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
               Select a notebook to view notes.
             </p>
           )}
         </div>
       </section>
 
-      <section className="min-w-0 flex-1 rounded-2xl border border-border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
+      <section className="min-w-0 min-h-0 overflow-auto p-4 lg:p-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <Input
             value={titleDraft}
             onChange={event => {
@@ -459,9 +450,9 @@ function KnowledgeBasePage() {
           <span
             className={cn(
               'inline-flex min-w-20 justify-center rounded-full px-3 py-1 text-xs font-medium',
-              saveState === 'saved' && 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-              saveState === 'unsaved' && 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
-              saveState === 'saving' && 'bg-blue-500/10 text-blue-700 dark:text-blue-300'
+              saveState === 'saved' && 'bg-secondary text-secondary-foreground',
+              saveState === 'unsaved' && 'bg-muted text-muted-foreground',
+              saveState === 'saving' && 'bg-primary/15 text-primary'
             )}
           >
             {saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving...' : 'Unsaved'}
@@ -482,7 +473,7 @@ function KnowledgeBasePage() {
             </div>
           </div>
         ) : (
-          <div className="flex h-[360px] items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+          <div className="flex h-[360px] items-center justify-center rounded-xl border border-dashed border-border/70 text-sm text-muted-foreground">
             Select or create a note to start writing.
           </div>
         )}
