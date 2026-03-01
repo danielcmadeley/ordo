@@ -3,6 +3,7 @@
   --tt-theme-text: var(--tt-gray-light-900);
   --tt-toolbar-bg-color: transparent;
   --tt-toolbar-border-color: var(--border);
+  position: relative;
   width: 100%;
   min-height: 460px;
   overflow: auto;
@@ -13,6 +14,11 @@
   .dark & {
     --tt-theme-text: var(--tt-gray-dark-900);
   }
+}
+
+.simple-editor-wrapper--borderless {
+  border: none;
+  border-radius: 0;
 }
 
 .simple-editor-content {
@@ -31,8 +37,23 @@
   background: transparent;
 }
 
+.simple-editor-placeholder {
+  position: absolute;
+  top: calc(var(--tt-toolbar-height) + 1.5rem);
+  left: 1.5rem;
+  margin: 0;
+  font-size: 1rem;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
 @media screen and (max-width: 480px) {
   .simple-editor-content .tiptap.ProseMirror.simple-editor {
     padding: 1rem 1rem 6rem;
+  }
+
+  .simple-editor-placeholder {
+    top: calc(var(--tt-toolbar-height) + 1rem);
+    left: 1rem;
   }
 }

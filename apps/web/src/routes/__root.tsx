@@ -30,6 +30,7 @@ import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedwo
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { getSessionUserId, getSessionWithFallback, type SessionData } from '@/lib/authClient'
 import { isProjectView, PROJECT_VIEW_OPTIONS, type ProjectView } from '@/lib/project-views'
+import { AppChromeProvider, useAppChrome } from '@/lib/app-chrome-context'
 import { SessionProvider } from '@/lib/session-context'
 import { ThemeProvider } from '@/components/theme-provider'
 import { cn } from '@/lib/utils'
@@ -118,6 +119,7 @@ function AppLayout() {
   const isProjectDialogOpen = currentDialog === 'project'
   const isTaskDialogOpen = currentDialog === 'task'
   const breadcrumbs = getBreadcrumbs(location.pathname, currentProjectView)
+  const { topRightContent, bottomCenterContent } = useAppChrome()
 
   const navigateProjectSearch = (next: { view: ProjectView; dialog: string | undefined }) => {
     navigate({
@@ -207,48 +209,51 @@ function AppLayout() {
                 </div>
               ))}
             </nav>
-            {isProjects && (
-              <div className="ml-auto flex min-w-0 items-center gap-1 overflow-x-auto">
-                <Button
-                  size="sm"
-                  variant={isProjectDialogOpen ? 'default' : 'outline'}
-                  className="h-6 px-2 text-xs"
-                  onClick={() => {
-                    navigateProjectSearch({ view: currentProjectView, dialog: 'project' })
-                  }}
-                >
-                  New Project
-                </Button>
-                <Button
-                  size="sm"
-                  variant={isTaskDialogOpen ? 'default' : 'outline'}
-                  className="h-6 px-2 text-xs"
-                  onClick={() => {
-                    navigateProjectSearch({ view: currentProjectView, dialog: 'task' })
-                  }}
-                >
-                  New Task
-                </Button>
-                {PROJECT_VIEW_OPTIONS.map((option) => (
+            <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto">
+              {topRightContent}
+              {isProjects && (
+                <>
                   <Button
-                    key={option}
                     size="sm"
-                    variant={currentProjectView === option ? 'default' : 'ghost'}
-                    className="h-6 w-6 p-0"
-                    title={option}
-                    aria-label={`Switch to ${option} view`}
+                    variant={isProjectDialogOpen ? 'default' : 'outline'}
+                    className="h-6 px-2 text-xs"
                     onClick={() => {
-                      navigateProjectSearch({ view: option, dialog: typeof currentDialog === 'string' ? currentDialog : undefined })
+                      navigateProjectSearch({ view: currentProjectView, dialog: 'project' })
                     }}
                   >
-                    {(() => {
-                      const Icon = PROJECT_VIEW_ICONS[option]
-                      return <Icon className="h-4 w-4" />
-                    })()}
+                    New Project
                   </Button>
-                ))}
-              </div>
-            )}
+                  <Button
+                    size="sm"
+                    variant={isTaskDialogOpen ? 'default' : 'outline'}
+                    className="h-6 px-2 text-xs"
+                    onClick={() => {
+                      navigateProjectSearch({ view: currentProjectView, dialog: 'task' })
+                    }}
+                  >
+                    New Task
+                  </Button>
+                  {PROJECT_VIEW_OPTIONS.map((option) => (
+                    <Button
+                      key={option}
+                      size="sm"
+                      variant={currentProjectView === option ? 'default' : 'ghost'}
+                      className="h-6 w-6 p-0"
+                      title={option}
+                      aria-label={`Switch to ${option} view`}
+                      onClick={() => {
+                        navigateProjectSearch({ view: option, dialog: typeof currentDialog === 'string' ? currentDialog : undefined })
+                      }}
+                    >
+                      {(() => {
+                        const Icon = PROJECT_VIEW_ICONS[option]
+                        return <Icon className="h-4 w-4" />
+                      })()}
+                    </Button>
+                  ))}
+                </>
+              )}
+            </div>
           </header>
           <div className="flex-1 min-h-0 min-w-0 overflow-hidden rounded-tl-xl border-t border-l border-border bg-content-background/25">
             <div className="h-full overflow-y-auto overflow-x-hidden overscroll-contain">
@@ -257,9 +262,14 @@ function AppLayout() {
           </div>
         </SidebarInset>
       </div>
-      <footer className="fixed inset-x-0 bottom-0 z-50 hidden h-[25px] items-center justify-between border-t border-border px-3 md:flex">
-        <NetworkStatusIndicator />
-        <div className="flex items-center gap-3">
+      <footer className="fixed inset-x-0 bottom-0 z-50 hidden h-[25px] items-center border-t border-border px-3 md:flex">
+        <div className="flex min-w-0 flex-1 items-center">
+          <NetworkStatusIndicator />
+        </div>
+        <div className="mx-4 flex min-w-0 items-center justify-center text-xs text-muted-foreground">
+          {bottomCenterContent}
+        </div>
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
           <span aria-hidden className="h-3 w-px bg-border" />
           <FooterLocationClock />
         </div>
@@ -356,7 +366,9 @@ function RootComponent() {
           batchUpdates={batchUpdates}
         >
           <NuqsAdapter>
-            <AppLayout />
+            <AppChromeProvider>
+              <AppLayout />
+            </AppChromeProvider>
           </NuqsAdapter>
         </LiveStoreProvider>
       </SessionProvider>

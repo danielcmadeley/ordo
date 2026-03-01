@@ -1,0 +1,48 @@
+---
+import BlogLayout from '../../layouts/BlogLayout.astro'
+---
+
+<BlogLayout
+  title="Five Views, One Data Model: How Ordo Keeps Your Projects in Sync"
+  description="List, Kanban, Calendar, Gantt, and Table — every view reads from the same source of truth. Here's how we designed the schema to make that seamless."
+  date="Feb 20, 2026"
+  readTime="8 min read"
+  category="Product"
+>
+  <h2>The multi-view problem</h2>
+  <p>
+    Most project tools give you one view and optimize for it. Trello is a board. Todoist is a list. Notion is a document. When you need a different perspective on the same work, you either hack it with filters or switch to a different tool entirely.
+  </p>
+  <p>
+    We wanted Ordo to feel like a single system that you can look at from five different angles: List, Kanban, Calendar, Gantt, and Table. Every view shows the same tasks with the same state. Drag a card on the board, and the list updates. Change a date in the table, and the Gantt adjusts.
+  </p>
+
+  <h2>Designing the schema</h2>
+  <p>
+    The key insight is that views are projections, not data stores. Every task in Ordo has a canonical set of fields: title, status, priority, dates, project, and tags. Each view reads from this shared schema and presents it differently.
+  </p>
+  <p>
+    The Kanban board groups by status. The Calendar positions by due date. The Gantt renders start-to-end ranges. The Table shows all fields in editable columns. The List provides a simple, scannable hierarchy. None of these views own the data — they all read and write to the same LiveStore tables.
+  </p>
+
+  <h2>Handling view-specific state</h2>
+  <p>
+    Some state is view-specific. Column order in the table, card position in the board, zoom level in the Gantt — these are presentation concerns, not data model concerns. We store these separately as view preferences, scoped to the user and the project.
+  </p>
+  <p>
+    This separation keeps the core data clean while allowing each view to feel tailored and responsive to how you work.
+  </p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Different phases of work need different views. Early brainstorming feels right on a board. Sprint planning works in a table. Deadline tracking needs a calendar or Gantt. Having all five in the same app, operating on the same data, means you never lose context when you change how you're looking at your work.
+  </p>
+  <p>
+    It also means you can share a project with a teammate who prefers a different view, and you're both looking at the same truth.
+  </p>
+
+  <hr />
+  <p>
+    Try switching between views in <a href="https://app.getordo.co">Ordo</a> — it's instant, and nothing gets lost.
+  </p>
+</BlogLayout>

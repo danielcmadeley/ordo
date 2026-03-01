@@ -66,6 +66,7 @@ import { useCursorVisibility } from "@/hooks/use-cursor-visibility"
 
 // --- Lib ---
 import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils"
+import { cn } from "@/lib/utils"
 
 // --- Styles ---
 import "@/components/tiptap-templates/simple/simple-editor.scss"
@@ -75,6 +76,8 @@ import content from "@/components/tiptap-templates/simple/data/content.json"
 type SimpleEditorProps = {
   content?: string
   onChange?: (html: string) => void
+  placeholder?: string
+  bordered?: boolean
 }
 
 const MainToolbarContent = ({
@@ -182,12 +185,18 @@ const MobileToolbarContent = ({
   </>
 )
 
-export function SimpleEditor({ content: initialContent, onChange }: SimpleEditorProps) {
+export function SimpleEditor({
+  content: initialContent,
+  onChange,
+  placeholder,
+  bordered = true,
+}: SimpleEditorProps) {
   const isMobile = useIsBreakpoint()
   const { height } = useWindowSize()
   const [mobileView, setMobileView] = useState<"main" | "highlighter" | "link">(
     "main"
   )
+  const [isEditorEmpty, setIsEditorEmpty] = useState(true)
   const toolbarRef = useRef<HTMLDivElement>(null)
 
   const editor = useEditor({
@@ -228,7 +237,11 @@ export function SimpleEditor({ content: initialContent, onChange }: SimpleEditor
       }),
     ],
     content: initialContent ?? content,
+    onCreate: ({ editor: currentEditor }) => {
+      setIsEditorEmpty(currentEditor.isEmpty)
+    },
     onUpdate: ({ editor: currentEditor }) => {
+      setIsEditorEmpty(currentEditor.isEmpty)
       onChange?.(currentEditor.getHTML())
     },
   })
@@ -237,6 +250,7 @@ export function SimpleEditor({ content: initialContent, onChange }: SimpleEditor
     if (!editor || typeof initialContent !== "string") return
     if (editor.getHTML() === initialContent) return
     editor.commands.setContent(initialContent, { emitUpdate: false })
+    setIsEditorEmpty(editor.isEmpty)
   }, [editor, initialContent])
 
   const rect = useCursorVisibility({
@@ -251,7 +265,7 @@ export function SimpleEditor({ content: initialContent, onChange }: SimpleEditor
   }, [isMobile, mobileView])
 
   return (
-    <div className="simple-editor-wrapper">
+    <div className={cn("simple-editor-wrapper", !bordered && "simple-editor-wrapper--borderless")}>
       <EditorContext.Provider value={{ editor }}>
         <Toolbar
           ref={toolbarRef}
@@ -282,6 +296,7 @@ export function SimpleEditor({ content: initialContent, onChange }: SimpleEditor
           role="presentation"
           className="simple-editor-content"
         />
+        {placeholder && isEditorEmpty && <p className="simple-editor-placeholder">{placeholder}</p>}
       </EditorContext.Provider>
     </div>
   )

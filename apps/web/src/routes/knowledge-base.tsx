@@ -5,10 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { events, tables } from '@ordo/shared/livestore-schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Textarea } from '@/components/ui/textarea'
 import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
 import { cn } from '@/lib/utils'
 import { requireAuthSession } from '@/lib/auth-guards'
+import { useAppChrome } from '@/lib/app-chrome-context'
 import { useEmbedItem, stripHtml } from '@/lib/embed'
 
 export const Route = createFileRoute('/knowledge-base')({
@@ -26,9 +28,28 @@ function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function formatEditedAt(ts: number) {
+  const date = new Date(ts)
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const year = date.getFullYear()
+  const hours24 = date.getHours()
+  const hours12 = hours24 % 12 || 12
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const period = hours24 >= 12 ? 'PM' : 'AM'
+  return `${month}-${day}-${year} ${String(hours12).padStart(2, '0')}:${minutes} ${period}`
+}
+
+function getWordCountFromHtml(html: string) {
+  const plainText = stripHtml(html).replace(/\s+/g, ' ').trim()
+  if (!plainText) return 0
+  return plainText.split(' ').length
+}
+
 function KnowledgeBasePage() {
   const { store } = useStore()
   const embed = useEmbedItem()
+  const { setTopRightContent, setBottomCenterContent } = useAppChrome()
   const [showNotebookForm, setShowNotebookForm] = useState(false)
   const [notebookForm, setNotebookForm] = useState<NotebookForm>(EMPTY_NOTEBOOK_FORM)
   const [selectedNotebookId, setSelectedNotebookId] = useState<number | null>(null)
@@ -36,6 +57,12 @@ function KnowledgeBasePage() {
   const [titleDraft, setTitleDraft] = useState('')
   const [contentDraft, setContentDraft] = useState(EMPTY_NOTE_CONTENT)
   const [saveState, setSaveState] = useState<'saved' | 'unsaved' | 'saving'>('saved')
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : false
+  )
+  const [isFooterVisible, setIsFooterVisible] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : false
+  )
   const autosaveTimerRef = useRef<number | null>(null)
   const idCounterRef = useRef(0)
 
@@ -60,6 +87,52 @@ function KnowledgeBasePage() {
     () => notes.find(note => note.id === selectedNoteId) ?? null,
     [notes, selectedNoteId]
   )
+  const selectedNoteWordCount = useMemo(() => {
+    if (!selectedNote) return 0
+    return getWordCountFromHtml(contentDraft)
+  }, [contentDraft, selectedNote])
+
+  const saveStateBadge = useMemo(() => {
+    if (!selectedNote) return null
+    return <span className={cn(
+      'inline-flex h-5 items-center justify-center rounded-full px-2 text-[11px] font-medium',
+      saveState === 'saved' && 'bg-secondary text-secondary-foreground',
+      saveState === 'unsaved' && 'bg-muted text-muted-foreground',
+      saveState === 'saving' && 'bg-primary/15 text-primary'
+    )}>{saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving...' : 'Unsaved'}</span>
+  }, [saveState, selectedNote])
+
+  const topRightMeta = useMemo(() => {
+    if (!selectedNote || isFooterVisible) return null
+    return (
+      <span className="text-[11px] text-muted-foreground">
+        {selectedNoteWordCount} {selectedNoteWordCount === 1 ? 'word' : 'words'} - {formatEditedAt(selectedNote.updatedAt)}
+      </span>
+    )
+  }, [isFooterVisible, selectedNote, selectedNoteWordCount])
+
+  const topRightContent = useMemo(() => {
+    if (!saveStateBadge && !topRightMeta) return null
+    return (
+      <div className="flex items-center gap-2">
+        {topRightMeta}
+        {saveStateBadge}
+      </div>
+    )
+  }, [saveStateBadge, topRightMeta])
+
+  const bottomMeta = useMemo(() => {
+    if (!selectedNote) return null
+    return (
+      <div className="inline-flex items-center gap-3">
+        <span>
+          {selectedNoteWordCount} {selectedNoteWordCount === 1 ? 'word' : 'words'}
+        </span>
+        <span aria-hidden className="h-3 w-px bg-border" />
+        <span>Last edited {formatEditedAt(selectedNote.updatedAt)}</span>
+      </div>
+    )
+  }, [selectedNote, selectedNoteWordCount])
 
   const makeId = useCallback(() => {
     const now = Date.now()
@@ -233,6 +306,42 @@ function KnowledgeBasePage() {
   }, [contentDraft, persistDraft, selectedNote, titleDraft])
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)')
+    const footerMediaQuery = window.matchMedia('(min-width: 768px)')
+    const updateDesktopState = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches)
+    }
+    const updateFooterState = (event: MediaQueryListEvent) => {
+      setIsFooterVisible(event.matches)
+    }
+
+    setIsDesktop(mediaQuery.matches)
+    setIsFooterVisible(footerMediaQuery.matches)
+    mediaQuery.addEventListener('change', updateDesktopState)
+    footerMediaQuery.addEventListener('change', updateFooterState)
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateDesktopState)
+      footerMediaQuery.removeEventListener('change', updateFooterState)
+    }
+  }, [])
+
+  useEffect(() => {
+    setTopRightContent(topRightContent)
+  }, [setTopRightContent, topRightContent])
+
+  useEffect(() => {
+    setBottomCenterContent(isFooterVisible ? bottomMeta : null)
+  }, [bottomMeta, isFooterVisible, setBottomCenterContent])
+
+  useEffect(() => {
+    return () => {
+      setTopRightContent(null)
+      setBottomCenterContent(null)
+    }
+  }, [setBottomCenterContent, setTopRightContent])
+
+  useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         flushAutosaveNow()
@@ -313,183 +422,173 @@ function KnowledgeBasePage() {
   }
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[minmax(300px,25%)_1fr]">
-      <section className="min-h-0 overflow-auto border-b border-border/60 p-4 lg:border-r lg:border-b-0">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h1 className="text-lg font-semibold">Notebooks</h1>
-          <Button size="sm" onClick={() => setShowNotebookForm(v => !v)}>
-            {showNotebookForm ? 'Close' : 'New'}
-          </Button>
-        </div>
-
-        {showNotebookForm && (
-          <div className="mb-4 space-y-2 rounded-xl border border-border bg-muted/30 p-3">
-            <Input
-              value={notebookForm.name}
-              onChange={event => setNotebookForm({ ...notebookForm, name: event.target.value })}
-              placeholder="Notebook name"
-            />
-            <Textarea
-              rows={3}
-              value={notebookForm.description}
-              onChange={event => setNotebookForm({ ...notebookForm, description: event.target.value })}
-              placeholder="Description"
-            />
-            <div className="flex justify-end">
-              <Button size="sm" onClick={createNotebook} disabled={!notebookForm.name.trim()}>
-                Create notebook
-              </Button>
-            </div>
+    <ResizablePanelGroup orientation={isDesktop ? 'horizontal' : 'vertical'}>
+      <ResizablePanel defaultSize={isDesktop ? 30 : 45} minSize={isDesktop ? 22 : 30}>
+        <section className="min-h-0 h-full overflow-auto border-b border-border/60 p-4 lg:border-r lg:border-b-0">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h1 className="text-lg font-semibold">Notebooks</h1>
+            <Button size="sm" onClick={() => setShowNotebookForm(v => !v)}>
+              {showNotebookForm ? 'Close' : 'New'}
+            </Button>
           </div>
-        )}
 
-        <div className="space-y-2">
-          {sortedNotebooks.map(notebook => (
-            <div
-              key={notebook.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => selectNotebook(notebook.id)}
-              onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  selectNotebook(notebook.id)
-                }
-              }}
-              className={cn(
-                'w-full cursor-pointer rounded-xl px-3 py-2 text-left transition-colors',
-                selectedNotebookId === notebook.id
-                  ? 'bg-primary/10 text-foreground'
-                  : 'hover:bg-muted/40'
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-sm font-medium">{notebook.name}</p>
-                <button
-                  type="button"
-                  onClick={event => {
-                    event.stopPropagation()
-                    deleteNotebook(notebook.id)
-                  }}
-                  className="text-xs text-muted-foreground hover:text-destructive"
-                >
-                  Delete
-                </button>
+          {showNotebookForm && (
+            <div className="mb-4 space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+              <Input
+                value={notebookForm.name}
+                onChange={event => setNotebookForm({ ...notebookForm, name: event.target.value })}
+                placeholder="Notebook name"
+              />
+              <Textarea
+                rows={3}
+                value={notebookForm.description}
+                onChange={event => setNotebookForm({ ...notebookForm, description: event.target.value })}
+                placeholder="Description"
+              />
+              <div className="flex justify-end">
+                <Button size="sm" onClick={createNotebook} disabled={!notebookForm.name.trim()}>
+                  Create notebook
+                </Button>
               </div>
-              {notebook.description && (
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{notebook.description}</p>
-              )}
-              <p className="mt-1 text-[11px] text-muted-foreground">Updated {formatDate(notebook.updatedAt)}</p>
             </div>
-          ))}
-          {sortedNotebooks.length === 0 && (
-            <p className="rounded-xl border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
-              No notebooks yet. Create one to start writing.
-            </p>
           )}
-        </div>
 
-        <div className="my-4 h-px bg-border/60" />
-
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Notes</h2>
-          <Button size="sm" onClick={createNote} disabled={selectedNotebookId === null}>
-            New note
-          </Button>
-        </div>
-
-        <div className="space-y-2">
-          {notesForSelectedNotebook.map(note => (
-            <div
-              key={note.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => selectNote(note.id)}
-              onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  selectNote(note.id)
-                }
-              }}
-              className={cn(
-                'w-full cursor-pointer rounded-xl px-3 py-2 text-left transition-colors',
-                selectedNoteId === note.id
-                  ? 'bg-primary/10 text-foreground'
-                  : 'hover:bg-muted/40'
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-sm font-medium">{note.title || 'Untitled note'}</p>
-                <button
-                  type="button"
-                  onClick={event => {
-                    event.stopPropagation()
-                    deleteNote(note.id)
-                  }}
-                  className="text-xs text-muted-foreground hover:text-destructive"
-                >
-                  Delete
-                </button>
+          <div className="space-y-2">
+            {sortedNotebooks.map(notebook => (
+              <div
+                key={notebook.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => selectNotebook(notebook.id)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    selectNotebook(notebook.id)
+                  }
+                }}
+                className={cn(
+                  'w-full cursor-pointer rounded-xl px-3 py-2 text-left transition-colors',
+                  selectedNotebookId === notebook.id
+                    ? 'bg-primary/10 text-foreground'
+                    : 'hover:bg-muted/40'
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-sm font-medium">{notebook.name}</p>
+                  <button
+                    type="button"
+                    onClick={event => {
+                      event.stopPropagation()
+                      deleteNotebook(notebook.id)
+                    }}
+                    className="text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    Delete
+                  </button>
+                </div>
+                {notebook.description && (
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{notebook.description}</p>
+                )}
+                <p className="mt-1 text-[11px] text-muted-foreground">Updated {formatDate(notebook.updatedAt)}</p>
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">Updated {formatDate(note.updatedAt)}</p>
-            </div>
-          ))}
-
-          {selectedNotebookId !== null && notesForSelectedNotebook.length === 0 && (
-            <p className="rounded-xl border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
-              This notebook has no notes yet.
-            </p>
-          )}
-          {selectedNotebookId === null && (
-            <p className="rounded-xl border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
-              Select a notebook to view notes.
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section className="min-w-0 min-h-0 overflow-auto p-4 lg:p-6">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <Input
-            value={titleDraft}
-            onChange={event => {
-              setTitleDraft(event.target.value)
-            }}
-            placeholder="Note title"
-            disabled={!selectedNote}
-            className="text-base font-medium"
-          />
-          <span
-            className={cn(
-              'inline-flex min-w-20 justify-center rounded-full px-3 py-1 text-xs font-medium',
-              saveState === 'saved' && 'bg-secondary text-secondary-foreground',
-              saveState === 'unsaved' && 'bg-muted text-muted-foreground',
-              saveState === 'saving' && 'bg-primary/15 text-primary'
+            ))}
+            {sortedNotebooks.length === 0 && (
+              <p className="rounded-xl border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
+                No notebooks yet. Create one to start writing.
+              </p>
             )}
-          >
-            {saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving...' : 'Unsaved'}
-          </span>
-        </div>
+          </div>
 
-        {selectedNote ? (
-          <div className="space-y-3">
-            <SimpleEditor
-              content={contentDraft}
-              onChange={html => {
-                setContentDraft(html)
-              }}
-            />
-            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <span>Created {formatDate(selectedNote.createdAt)}</span>
-              <span>Updated {formatDate(selectedNote.updatedAt)}</span>
+          <div className="my-4 h-px bg-border/60" />
+
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">Notes</h2>
+            <Button size="sm" onClick={createNote} disabled={selectedNotebookId === null}>
+              New note
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            {notesForSelectedNotebook.map(note => (
+              <div
+                key={note.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => selectNote(note.id)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    selectNote(note.id)
+                  }
+                }}
+                className={cn(
+                  'w-full cursor-pointer rounded-xl px-3 py-2 text-left transition-colors',
+                  selectedNoteId === note.id
+                    ? 'bg-primary/10 text-foreground'
+                    : 'hover:bg-muted/40'
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-sm font-medium">{note.title || 'Untitled note'}</p>
+                  <button
+                    type="button"
+                    onClick={event => {
+                      event.stopPropagation()
+                      deleteNote(note.id)
+                    }}
+                    className="text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    Delete
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">Updated {formatDate(note.updatedAt)}</p>
+              </div>
+            ))}
+
+            {selectedNotebookId !== null && notesForSelectedNotebook.length === 0 && (
+              <p className="rounded-xl border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
+                This notebook has no notes yet.
+              </p>
+            )}
+            {selectedNotebookId === null && (
+              <p className="rounded-xl border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
+                Select a notebook to view notes.
+              </p>
+            )}
+          </div>
+        </section>
+      </ResizablePanel>
+
+      <ResizableHandle withHandle={isDesktop} />
+
+      <ResizablePanel defaultSize={isDesktop ? 70 : 55} minSize={40}>
+        <section className="min-w-0 min-h-0 h-full overflow-auto p-4 lg:p-6">
+          {selectedNote ? (
+            <div className="space-y-3">
+              <input
+                value={titleDraft}
+                onChange={event => {
+                  setTitleDraft(event.target.value)
+                }}
+                placeholder="Untitled note"
+                className="w-full border-0 bg-transparent px-0 text-4xl font-semibold tracking-tight text-foreground outline-none placeholder:text-muted-foreground/70"
+              />
+              <SimpleEditor
+                content={contentDraft}
+                placeholder="Start writing your note..."
+                bordered={false}
+                onChange={html => {
+                  setContentDraft(html)
+                }}
+              />
             </div>
-          </div>
-        ) : (
-          <div className="flex h-[360px] items-center justify-center rounded-xl border border-dashed border-border/70 text-sm text-muted-foreground">
-            Select or create a note to start writing.
-          </div>
-        )}
-      </section>
-    </div>
+          ) : (
+            <div className="flex h-[360px] items-center justify-center rounded-xl border border-dashed border-border/70 text-sm text-muted-foreground">
+              Select or create a note to start writing.
+            </div>
+          )}
+        </section>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   )
 }

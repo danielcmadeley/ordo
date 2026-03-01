@@ -175,6 +175,17 @@ function CrmPage() {
     }
   }
 
+  const refreshBookmarks = async () => {
+    if (!status.connected) return
+    try {
+      await apiRequest<{ queued: boolean }>('/api/x/bookmarks/refresh', { method: 'POST' })
+      await loadBookmarks(undefined, true)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to refresh bookmarks')
+    }
+  }
+
   useEffect(() => {
     void loadStatus()
   }, [])
@@ -498,7 +509,7 @@ function CrmPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { void loadBookmarks(undefined, true) }}
+              onClick={() => { void refreshBookmarks() }}
               disabled={!status.connected || bookmarksLoading}
             >
               Refresh

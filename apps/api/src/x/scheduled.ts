@@ -1,5 +1,12 @@
+import {
+  clearFirstPageBookmarksCache,
+  upsertBookmarksFromApiResponse,
+  upsertBookmarkSyncState,
+} from './bookmarks'
+
 type XEnv = {
   auth_db: D1Database
+  X_CACHE?: KVNamespace
   X_CLIENT_ID: string
   X_CLIENT_SECRET?: string
   X_JOBS_QUEUE: Queue
@@ -12,8 +19,21 @@ type SendScheduledPostMessage = {
   traceId: string
 }
 
+type SyncBookmarksMessage = {
+  type: 'sync_bookmarks'
+  userId: string
+  reason: string
+  force: boolean
+  cursor?: string
+  requestedAt: number
+  traceId: string
+}
+
+type XQueueMessage = SendScheduledPostMessage | SyncBookmarksMessage
+
 type XAccountRow = {
   user_id: string
+  x_user_id: string
   access_token: string
   refresh_token: string | null
   scope: string | null
@@ -105,7 +125,7 @@ async function fetchXPathWithFallback(path: string, init?: RequestInit) {
 
 async function getXAccount(db: D1Database, userId: string) {
   return db
-    .prepare('SELECT user_id, access_token, refresh_token, scope, expires_at FROM x_accounts WHERE user_id = ?')
+    .prepare('SELECT user_id, x_user_id, access_token, refresh_token, scope, expires_at FROM x_accounts WHERE user_id = ?')
     .bind(userId)
     .first<XAccountRow>()
 }
@@ -196,6 +216,43 @@ async function createXPost(env: XEnv, account: XAccountRow, text: string) {
     return { ok: false as const, transient: true, status: response.status, error }
   }
   return { ok: false as const, transient: false, status: response.status, error }
+}
+
+async function fetchXBookmarks(env: XEnv, account: XAccountRow, paginationToken?: string, maxResults = 50) {
+  let active = account
+  const stale = active.expires_at !== null && active.expires_at < Date.now() + 60_000
+  if (stale && active.refresh_token) {
+    active = (await refreshAccessToken(env, active)) ?? active
+  }
+
+  const url = new URL(`https://api.x.com/2/users/${active.x_user_id}/bookmarks`)
+  url.searchParams.set('max_results', String(Math.max(5, Math.min(100, maxResults))))
+  if (paginationToken) url.searchParams.set('pagination_token', paginationToken)
+  url.searchParams.set('tweet.fields', 'created_at,author_id,text,attachments')
+  url.searchParams.set('expansions', 'author_id,attachments.media_keys')
+  url.searchParams.set('media.fields', 'media_key,type,url,preview_image_url,alt_text,width,height')
+  url.searchParams.set('user.fields', 'id,name,username,profile_image_url')
+
+  const request = () => fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${active.access_token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'User-Agent': 'ordo-x-scheduler/1.0',
+    },
+  })
+
+  let response = await request()
+  if (response.status === 401 && active.refresh_token) {
+    const refreshed = await refreshAccessToken(env, active)
+    if (refreshed) {
+      active = refreshed
+      response = await request()
+    }
+  }
+
+  return response
 }
 
 async function markFailed(db: D1Database, scheduledPostId: string, reason: string) {
@@ -301,16 +358,121 @@ async function processScheduledPost(env: XEnv, body: SendScheduledPostMessage) {
   await markFailed(env.auth_db, body.scheduledPostId, `X error (${result.status}): ${result.error}`)
 }
 
+async function processSyncBookmarks(env: XEnv, body: SyncBookmarksMessage) {
+  const account = await getXAccount(env.auth_db, body.userId)
+  if (!account) {
+    await upsertBookmarkSyncState(env.auth_db, {
+      userId: body.userId,
+      lastSyncStatus: 'failed',
+      lastError: 'X account is not connected',
+    })
+    return
+  }
+
+  if (account.x_user_id === 'me') {
+    await upsertBookmarkSyncState(env.auth_db, {
+      userId: body.userId,
+      lastSyncStatus: 'pending_profile',
+      lastError: 'X profile is still syncing',
+    })
+    return
+  }
+
+  const response = await fetchXBookmarks(env, account, body.cursor, 50)
+  if (!response.ok) {
+    const error = await parseErrorMessage(response)
+    if (X_TRANSIENT_STATUSES.has(response.status)) {
+      throw new TransientQueueError(error)
+    }
+
+    await upsertBookmarkSyncState(env.auth_db, {
+      userId: body.userId,
+      lastSyncStatus: 'failed',
+      lastError: `X error (${response.status}): ${error}`,
+    })
+    return
+  }
+
+  const payload = await response.json<{
+    data?: Array<{
+      id: string
+      text: string
+      created_at?: string
+      author_id?: string
+      attachments?: { media_keys?: string[] }
+    }>
+    includes?: {
+      media?: Array<{
+        media_key: string
+        type: string
+        url?: string
+        preview_image_url?: string
+        alt_text?: string
+        width?: number
+        height?: number
+      }>
+      users?: Array<{ id: string; username: string; name?: string; profile_image_url?: string }>
+    }
+    meta?: {
+      next_token?: string
+      previous_token?: string
+      result_count?: number
+    }
+  }>()
+
+  await upsertBookmarksFromApiResponse(env.auth_db, {
+    userId: body.userId,
+    payload,
+  })
+
+  await upsertBookmarkSyncState(env.auth_db, {
+    userId: body.userId,
+    lastSyncedAt: Date.now(),
+    nextPaginationToken: payload.meta?.next_token ?? null,
+    lastSyncStatus: 'ok',
+    lastError: null,
+  })
+
+  await clearFirstPageBookmarksCache(env, body.userId)
+
+  if (payload.meta?.next_token) {
+    const nextMessage: SyncBookmarksMessage = {
+      type: 'sync_bookmarks',
+      userId: body.userId,
+      reason: 'pagination',
+      force: body.force,
+      cursor: payload.meta.next_token,
+      requestedAt: Date.now(),
+      traceId: body.traceId,
+    }
+    await env.X_JOBS_QUEUE.send(nextMessage)
+  }
+}
+
 export async function handleScheduledPostQueue(batch: MessageBatch<unknown>, env: XEnv) {
   for (const message of batch.messages) {
     try {
-      const body = message.body as Partial<SendScheduledPostMessage>
-      if (body.type !== 'send_scheduled_post' || !body.scheduledPostId || !body.userId || !body.traceId) {
+      const body = message.body as Partial<XQueueMessage>
+      if (body.type === 'send_scheduled_post') {
+        if (!body.scheduledPostId || !body.userId || !body.traceId) {
+          message.ack()
+          continue
+        }
+        await processScheduledPost(env, body as SendScheduledPostMessage)
         message.ack()
         continue
       }
 
-      await processScheduledPost(env, body as SendScheduledPostMessage)
+      if (body.type === 'sync_bookmarks') {
+        if (!body.userId || !body.traceId || typeof body.reason !== 'string' || typeof body.force !== 'boolean' || typeof body.requestedAt !== 'number') {
+          message.ack()
+          continue
+        }
+        await processSyncBookmarks(env, body as SyncBookmarksMessage)
+        message.ack()
+        continue
+      }
+
       message.ack()
     } catch (error) {
       if (error instanceof TransientQueueError) {

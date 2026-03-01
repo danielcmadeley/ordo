@@ -18,6 +18,7 @@ import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 
 export type Bindings = {
   auth_db: D1Database
+  X_CACHE?: KVNamespace
   SYNC_BACKEND_DO: DurableObjectNamespace<SyncBackendDO>
   VECTORIZE: VectorizeIndex
   AI: Ai

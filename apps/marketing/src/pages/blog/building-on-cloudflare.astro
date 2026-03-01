@@ -1,0 +1,53 @@
+---
+import BlogLayout from '../../layouts/BlogLayout.astro'
+---
+
+<BlogLayout
+  title="Building a Real-Time Sync Engine on Cloudflare Durable Objects"
+  description="Durable Objects gave us per-user WebSocket sync with zero cold starts. This post walks through our sync architecture and the trade-offs we made."
+  date="Feb 12, 2026"
+  readTime="10 min read"
+  category="Engineering"
+>
+  <h2>Why Durable Objects</h2>
+  <p>
+    When we decided on a local-first architecture for Ordo, we needed a sync layer that could handle per-user state with low latency and no cold-start overhead. Traditional server setups — even serverless functions — don't fit this model well. You need persistent connections (WebSockets), stateful coordination, and ideally, compute that runs close to the user.
+  </p>
+  <p>
+    Cloudflare Durable Objects checked every box. Each Durable Object is a single-threaded, stateful worker that can hold WebSocket connections and persist data to storage. We create one per user, giving every Ordo account its own sync endpoint.
+  </p>
+
+  <h2>The sync protocol</h2>
+  <p>
+    Ordo uses an event-sourced sync model. The local LiveStore database captures every mutation as an event — task created, title changed, status updated. When the client goes online, it pushes unseen events to the Durable Object over a WebSocket connection.
+  </p>
+  <p>
+    The Durable Object acts as a relay and persistence layer. It stores the canonical event log and broadcasts new events to any other connected clients (other tabs, other devices). Conflict resolution happens at the event level using timestamps and causal ordering.
+  </p>
+
+  <h2>Zero cold starts</h2>
+  <p>
+    One of the biggest advantages of Durable Objects is that they wake up instantly. When a user opens Ordo after being away, the WebSocket connection establishes in milliseconds and sync begins immediately. There's no container to spin up, no database connection to pool. The Durable Object is always ready.
+  </p>
+  <p>
+    This matters a lot for perceived performance. The app loads from the local database instantly, and sync happens in the background. By the time you've read your first task, the latest state from your other devices is already there.
+  </p>
+
+  <h2>Per-user isolation</h2>
+  <p>
+    Every user gets their own Durable Object, which means their data is physically isolated. There's no multi-tenant database where a bad query in one account affects another. Each user's sync endpoint is independent, scalable, and private by design.
+  </p>
+
+  <h2>Trade-offs</h2>
+  <p>
+    Durable Objects aren't free from limitations. Storage is capped (though generous for our use case), and there's no built-in query engine — you're working with key-value storage. We've worked around this by keeping the Durable Object focused on sync and event storage, while offloading analytics and account management to D1 and Workers.
+  </p>
+  <p>
+    The biggest trade-off is vendor lock-in. Our sync layer is deeply tied to Cloudflare's infrastructure. We've accepted this because the developer experience and performance are genuinely best-in-class for this use case, but it's a decision we made with eyes open.
+  </p>
+
+  <hr />
+  <p>
+    The result is sync that feels invisible. Open Ordo on your phone and your laptop — changes appear in real time. That's Durable Objects at work.
+  </p>
+</BlogLayout>

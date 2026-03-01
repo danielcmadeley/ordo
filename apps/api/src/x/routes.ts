@@ -3,6 +3,15 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { createAuth } from '../auth'
 import type { Bindings } from '../index'
 import { enqueueDueScheduledPosts } from './scheduled'
+import {
+  getBookmarkSyncState,
+  isBookmarkSyncStale,
+  readBookmarksCache,
+  readBookmarksFromDb,
+  upsertBookmarksFromApiResponse,
+  upsertBookmarkSyncState,
+  writeBookmarksCache,
+} from './bookmarks'
 
 const OAUTH_COOKIE = 'x_oauth_ctx'
 const DEFAULT_SCOPES = 'tweet.read tweet.write users.read bookmark.read offline.access'
@@ -32,6 +41,16 @@ type XAccountRow = {
   refresh_token: string | null
   scope: string | null
   expires_at: number | null
+}
+
+type SyncBookmarksMessage = {
+  type: 'sync_bookmarks'
+  userId: string
+  reason: string
+  force: boolean
+  cursor?: string
+  requestedAt: number
+  traceId: string
 }
 
 function base64UrlEncode(input: Uint8Array) {
@@ -224,6 +243,32 @@ async function fetchXApi(c: { env: Bindings }, account: XAccountRow, input: stri
   }
 
   return response
+}
+
+function buildSyncBookmarksMessage(input: {
+  userId: string
+  reason: string
+  force: boolean
+  cursor?: string
+}) {
+  return {
+    type: 'sync_bookmarks',
+    userId: input.userId,
+    reason: input.reason,
+    force: input.force,
+    cursor: input.cursor,
+    requestedAt: Date.now(),
+    traceId: randomUrlSafe(12),
+  } satisfies SyncBookmarksMessage
+}
+
+async function enqueueSyncBookmarks(c: { env: Bindings }, input: {
+  userId: string
+  reason: string
+  force: boolean
+  cursor?: string
+}) {
+  await c.env.X_JOBS_QUEUE.send(buildSyncBookmarksMessage(input))
 }
 
 async function parseErrorMessage(response: Response) {
@@ -516,6 +561,33 @@ export function registerXRoutes(app: Hono<{ Bindings: Bindings }>) {
     const rawMax = Number(c.req.query('max_results') || '10')
     const maxResults = Number.isFinite(rawMax) ? Math.max(5, Math.min(100, rawMax)) : 10
 
+    const cached = await readBookmarksCache(c.env, user.id, paginationToken ?? null, maxResults)
+    if (cached) {
+      return c.json(cached)
+    }
+
+    const d1Bookmarks = await readBookmarksFromDb(c.env.auth_db, {
+      userId: user.id,
+      limit: maxResults,
+      paginationToken: paginationToken ?? null,
+    })
+
+    const syncState = await getBookmarkSyncState(c.env.auth_db, user.id)
+    if (isBookmarkSyncStale(syncState?.last_synced_at)) {
+      const syncCursor = !paginationToken ? syncState?.next_pagination_token ?? undefined : undefined
+      await enqueueSyncBookmarks(c, {
+        userId: user.id,
+        reason: 'stale_read',
+        force: false,
+        cursor: syncCursor,
+      }).catch(() => undefined)
+    }
+
+    if (d1Bookmarks.hasRows && !d1Bookmarks.usedExternalToken) {
+      await writeBookmarksCache(c.env, user.id, paginationToken ?? null, maxResults, d1Bookmarks.response).catch(() => undefined)
+      return c.json(d1Bookmarks.response)
+    }
+
     const url = new URL(`https://api.x.com/2/users/${account.x_user_id}/bookmarks`)
     url.searchParams.set('max_results', String(maxResults))
     if (paginationToken) url.searchParams.set('pagination_token', paginationToken)
@@ -531,8 +603,66 @@ export function registerXRoutes(app: Hono<{ Bindings: Bindings }>) {
       return c.json({ error })
     }
 
-    const data = await response.json()
+    const data = await response.json<{
+      data?: Array<{
+        id: string
+        text: string
+        created_at?: string
+        author_id?: string
+        attachments?: { media_keys?: string[] }
+      }>
+      includes?: {
+        users?: Array<{ id: string; username: string; name?: string; profile_image_url?: string }>
+        media?: Array<{
+          media_key: string
+          type: string
+          url?: string
+          preview_image_url?: string
+          alt_text?: string
+          width?: number
+          height?: number
+        }>
+      }
+      meta?: {
+        next_token?: string
+        previous_token?: string
+        result_count?: number
+      }
+      error?: string
+    }>()
+
+    await upsertBookmarksFromApiResponse(c.env.auth_db, {
+      userId: user.id,
+      payload: data,
+    }).catch(() => undefined)
+
+    await upsertBookmarkSyncState(c.env.auth_db, {
+      userId: user.id,
+      lastSyncedAt: Date.now(),
+      nextPaginationToken: data.meta?.next_token ?? null,
+      lastSyncStatus: 'ok',
+      lastError: null,
+    }).catch(() => undefined)
+
+    await writeBookmarksCache(c.env, user.id, paginationToken ?? null, maxResults, data).catch(() => undefined)
+
     return c.json(data)
+  })
+
+  app.post('/api/x/bookmarks/refresh', async (c) => {
+    const user = await getSessionUser(c.env, c.req.raw.headers, c.req.raw.cf as IncomingRequestCfProperties)
+    if (!user) return c.json({ error: 'Unauthorized' }, 401)
+
+    const account = await getXAccount(c.env.auth_db, user.id)
+    if (!account) return c.json({ error: 'Connect your X account first' }, 400)
+
+    await enqueueSyncBookmarks(c, {
+      userId: user.id,
+      reason: 'manual_refresh',
+      force: true,
+    })
+
+    return c.json({ queued: true }, 202)
   })
 
   app.get('/api/x/scheduled-posts', async (c) => {

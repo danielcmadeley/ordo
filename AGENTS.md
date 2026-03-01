@@ -130,6 +130,21 @@ bun install
 
 All routes except `/login` are protected using TanStack Router's `beforeLoad`.
 
+## App Chrome Slots (Web)
+
+- Use `apps/web/src/lib/app-chrome-context.tsx` to publish route-specific UI into global app chrome.
+- `topRightContent` renders in the global top header (`apps/web/src/routes/__root.tsx`).
+- `bottomCenterContent` renders in the global desktop footer (`apps/web/src/routes/__root.tsx`).
+- Prefer this pattern for route status/meta (save state, counts, timestamps) instead of duplicating local pseudo-nav bars inside route content.
+- Always clear slot content on route unmount to avoid stale UI leaking into other routes.
+
+## Knowledge Base Conventions
+
+- Keep `apps/web/src/routes/knowledge-base.tsx` layout split resizable using `@/components/ui/resizable`.
+- Keep note title editable inside the editor section (document-style heading), not as a separate top input bar.
+- Keep save-state indicator in global top nav and note metadata (word count + last edited) in global bottom nav (desktop), with mobile fallback to top nav.
+- Keep editor placeholder text: `Start writing your note...`.
+
 ## Key Architecture Points
 
 1. **LiveStore per-user**: Store ID includes user ID (`livestore-todo-app-v3-user-{userId}`), ensuring data isolation

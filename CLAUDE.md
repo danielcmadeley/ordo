@@ -55,6 +55,7 @@ bun run deploy:api    # Deploy API to Cloudflare Workers
 | `apps/marketing/src/pages/index.astro` | Marketing landing page entry |
 | `apps/marketing/src/components/marketing/MarketingPage.tsx` | Marketing page content + theme toggle |
 | `apps/web/src/lib/authClient.ts` | BetterAuth client + offline session fallback |
+| `apps/web/src/lib/app-chrome-context.tsx` | Route-to-layout slots for global top-right and bottom-center nav content |
 | `apps/web/src/lib/session-cache.ts` | Local session cache helpers |
 | `apps/web/src/lib/auth-guards.ts` | Shared route guard helpers |
 | `apps/web/src/hooks/useCurrentUser.ts` | Shared current-user loading hook |
@@ -82,6 +83,16 @@ bun run deploy:api    # Deploy API to Cloudflare Workers
 - The shared package exports via path aliases: `@ordo/shared/livestore-schema` and `@ordo/shared/auth-schema`
 - Design system exports via `@ordo/design-system/*` and app aliases map `@/components/ui/*`, `@/lib/utils`, and `@/components/theme-provider` to shared package files
 - TanStack Router uses file-based routing under `apps/web/src/routes/`
+- App chrome slots are managed through `AppChromeProvider` (`apps/web/src/lib/app-chrome-context.tsx`), letting routes publish global header/footer metadata without wiring route state through URL params.
+
+## Knowledge Base UX Notes
+
+- Route: `apps/web/src/routes/knowledge-base.tsx`
+- Main split (notebooks/notes vs editor) is resizable via shared design-system primitive `@/components/ui/resizable`.
+- Note title is edited inside the editor content area (document-style), not in a separate top input row.
+- Save state badge (`Saved`, `Saving...`, `Unsaved`) is rendered in the global top nav via app chrome slot content.
+- Word count + last edited metadata is rendered in the global desktop bottom nav; on mobile, it falls back to the global top nav.
+- Editor body uses `SimpleEditor` in borderless mode with placeholder text: `Start writing your note...`.
 
 ## Environment Setup
 

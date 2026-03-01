@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -128,4 +128,62 @@ export const xScheduledPosts = sqliteTable("x_scheduled_posts", {
     .notNull(),
 });
 
-export const schema = { users, sessions, accounts, verifications, xAccounts, xScheduledPosts }
+export const xBookmarks = sqliteTable("x_bookmarks", {
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  bookmarkId: text("bookmark_id").notNull(),
+  text: text("text").notNull(),
+  authorId: text("author_id"),
+  createdAt: text("created_at").notNull(),
+  rawJson: text("raw_json").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.userId, table.bookmarkId] }),
+}))
+
+export const xBookmarkMedia = sqliteTable("x_bookmark_media", {
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  bookmarkId: text("bookmark_id").notNull(),
+  mediaKey: text("media_key").notNull(),
+  type: text("type").notNull(),
+  url: text("url"),
+  previewImageUrl: text("preview_image_url"),
+  altText: text("alt_text"),
+  width: integer("width"),
+  height: integer("height"),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.userId, table.bookmarkId, table.mediaKey] }),
+}))
+
+export const xBookmarkSyncState = sqliteTable("x_bookmark_sync_state", {
+  userId: text("user_id")
+    .primaryKey()
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  lastSyncedAt: integer("last_synced_at", { mode: "timestamp_ms" }),
+  nextPaginationToken: text("next_pagination_token"),
+  lastSyncStatus: text("last_sync_status"),
+  lastError: text("last_error"),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+})
+
+export const schema = {
+  users,
+  sessions,
+  accounts,
+  verifications,
+  xAccounts,
+  xScheduledPosts,
+  xBookmarks,
+  xBookmarkMedia,
+  xBookmarkSyncState,
+}

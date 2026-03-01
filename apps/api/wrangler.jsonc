@@ -30,6 +30,13 @@
 			"migrations_dir": "../../drizzle"
 		}
 	],
+	"kv_namespaces": [
+		{
+			"binding": "X_CACHE",
+			"id": "53afe7bd3fd04ee5a988867318db3479",
+			"preview_id": "53afe7bd3fd04ee5a988867318db3479"
+		}
+	],
 	"vectorize": [
 		{
 			"binding": "VECTORIZE",

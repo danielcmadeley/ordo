@@ -1,0 +1,48 @@
+---
+import BlogLayout from '../../layouts/BlogLayout.astro'
+---
+
+<BlogLayout
+  title="Why We Chose Local-First Architecture"
+  description="Most productivity apps treat your data as theirs. We built Ordo so your tasks and notes live on your device first, syncing to the edge only when you choose."
+  date="Feb 28, 2026"
+  readTime="6 min read"
+  category="Engineering"
+>
+  <h2>The problem with cloud-first</h2>
+  <p>
+    Every productivity app you've used in the last decade follows the same pattern: your data lives on someone else's server. You type a task, it travels across the internet, gets stored in a database you can't see, and comes back to your screen. When the server is slow, your app is slow. When the server is down, your app is useless.
+  </p>
+  <p>
+    We've normalized this, but it's a terrible trade-off for a tool that's supposed to help you think clearly and move fast.
+  </p>
+
+  <h2>What local-first actually means</h2>
+  <p>
+    Local-first is a software architecture where your device is the source of truth. Your tasks, notes, and journal entries are stored locally in an embedded database — in Ordo's case, via LiveStore, a reactive database built on SQLite. The app reads and writes to this local store instantly, with no network roundtrip.
+  </p>
+  <p>
+    Sync is an optimization, not a requirement. When you're online, changes propagate to our edge infrastructure (Cloudflare Durable Objects) over WebSockets. When you're offline, everything still works. When you come back online, changes merge automatically.
+  </p>
+
+  <h2>Why this matters for productivity</h2>
+  <p>
+    Speed changes behavior. When adding a task takes 5ms instead of 500ms, you capture thoughts before they disappear. When switching between views is instant, you explore your data instead of waiting for it to load. When your app works on a plane, you use the flight productively instead of staring at a spinner.
+  </p>
+  <p>
+    Local-first isn't just a technical choice — it's a UX decision. It means Ordo feels like a native app, even though it runs in the browser.
+  </p>
+
+  <h2>The trade-offs we accepted</h2>
+  <p>
+    Local-first comes with real complexity. Conflict resolution, storage limits, multi-device sync, and data migration all get harder when there's no single server of record. We've leaned on CRDTs and event-sourcing patterns to handle these gracefully, but it's an ongoing area of investment.
+  </p>
+  <p>
+    We think the trade-off is worth it. Your productivity tool should be the fastest app on your machine, and it should work everywhere — even where the internet doesn't.
+  </p>
+
+  <hr />
+  <p>
+    If you want to experience the difference local-first makes, <a href="https://app.getordo.co">try Ordo</a>. You'll feel it on the first click.
+  </p>
+</BlogLayout>

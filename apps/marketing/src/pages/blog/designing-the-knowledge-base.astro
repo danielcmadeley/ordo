@@ -1,0 +1,68 @@
+---
+import BlogLayout from '../../layouts/BlogLayout.astro'
+---
+
+<BlogLayout
+  title="Designing a Knowledge Base That Developers Actually Use"
+  description="Most note-taking apps are either too simple or too complex. We aimed for the sweet spot — structured notebooks with a fast, block-based editor."
+  date="Jan 28, 2026"
+  readTime="7 min read"
+  category="Design"
+>
+  <h2>The note-taking spectrum</h2>
+  <p>
+    On one end, you have Apple Notes. Simple, fast, but no structure. On the other end, you have Notion — powerful, flexible, but heavy. Pages nest infinitely, databases can do anything, and you spend more time organizing your system than using it.
+  </p>
+  <p>
+    We wanted Ordo's knowledge base to sit right in the middle. Structured enough to find things later, simple enough that you actually write in it.
+  </p>
+
+  <h2>Notebooks and notes</h2>
+  <p>
+    The organizational model is intentionally flat: notebooks contain notes. That's it. No nested pages, no databases-within-databases, no templates-of-templates. You create a notebook for a topic (like "Architecture Decisions" or "Meeting Notes"), and you write notes inside it.
+  </p>
+  <p>
+    This constraint is a feature. Flat structures are faster to navigate, easier to search, and harder to over-engineer. When you open the knowledge base, you see your notebooks and pick one. Inside, you see your notes sorted by recency. Click and write.
+  </p>
+
+  <h2>The editor</h2>
+  <p>
+    The note editor is built on Tiptap, a headless rich-text framework. It supports the formatting developers care about:
+  </p>
+  <ul>
+    <li>Headings, bold, italic, and strikethrough</li>
+    <li>Ordered and unordered lists</li>
+    <li>Code blocks with syntax highlighting</li>
+    <li>Blockquotes</li>
+    <li>Horizontal rules</li>
+  </ul>
+  <p>
+    The editor runs in borderless mode — there's no toolbar cluttering the interface. You interact with it through keyboard shortcuts and slash commands. The writing surface feels like a document, not a form.
+  </p>
+
+  <h2>Autosave and save state</h2>
+  <p>
+    Notes autosave as you type, with a debounced flush to the local database. The save state is reflected in the top nav as a badge: "Saved", "Saving...", or "Unsaved". You never have to think about saving — it just happens.
+  </p>
+  <p>
+    Because we're local-first, saving is essentially instant. There's no network roundtrip to wait for. The note is persisted to SQLite on your device in milliseconds.
+  </p>
+
+  <h2>Fast note switching</h2>
+  <p>
+    One of the most important UX details is how quickly you can switch between notes. In Ordo, clicking a note in the sidebar loads it instantly — the content is already in the local database. There's no loading state, no skeleton, no spinner. You click, and the text is there.
+  </p>
+  <p>
+    This speed changes how you use the knowledge base. You stop treating notes as separate destinations and start treating them as facets of a single workspace. You jump between notes the way you jump between tabs in your editor.
+  </p>
+
+  <h2>What we're still building</h2>
+  <p>
+    The knowledge base is functional today, but there's more to come. We're exploring full-text search across all notes, backlinks between notes and tasks, and the ability to embed task references inside note content. The goal is to make your notes and your tasks feel like parts of the same system — because they are.
+  </p>
+
+  <hr />
+  <p>
+    Try the knowledge base in <a href="https://app.getordo.co">Ordo</a>. Start a notebook, write a note, and feel the difference instant local persistence makes.
+  </p>
+</BlogLayout>
