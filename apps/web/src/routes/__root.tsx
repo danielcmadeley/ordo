@@ -1,6 +1,8 @@
 import { createRootRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ComponentType } from 'react'
+import { NuqsAdapter } from 'nuqs/adapters/tanstack-router'
 import {
   BookOpenIcon,
   CalendarDaysIcon,
@@ -11,6 +13,7 @@ import {
   TableCellsIcon,
   QueueListIcon,
   ListBulletIcon,
+  ChatBubbleBottomCenterTextIcon,
 } from '@heroicons/react/24/outline'
 import { AppSidebar } from '@/components/AppSidebar'
 import { FooterLocationClock } from '@/components/FooterLocationClock'
@@ -74,6 +77,7 @@ function getBreadcrumbs(pathname: string, currentProjectView: string): Breadcrum
     return base
   }
 
+  if (pathname === '/ai') return [{ label: 'Ask Ordo', to: '/ai' }]
   if (pathname === '/knowledge-base') return [{ label: 'Knowledge Base', to: '/knowledge-base' }]
   if (pathname.startsWith('/journal')) {
     const base: BreadcrumbItem[] = [{ label: 'Journal', to: '/journal/dashboard' }]
@@ -94,6 +98,8 @@ const adapter = makePersistedAdapter({
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
 })
+
+const queryClient = new QueryClient()
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -158,6 +164,13 @@ function AppLayout() {
       goTo: () => navigate({ to: '/journal/dashboard' }),
     },
     {
+      key: 'ai',
+      label: 'Ask AI',
+      icon: ChatBubbleBottomCenterTextIcon,
+      active: pathname => pathname === '/ai',
+      goTo: () => navigate({ to: '/ai' }),
+    },
+    {
       key: 'settings',
       label: 'Settings',
       icon: Cog6ToothIcon,
@@ -167,7 +180,7 @@ function AppLayout() {
   ]
 
   return (
-    <SidebarProvider className="h-svh overflow-hidden">
+    <SidebarProvider className="h-dvh overflow-hidden">
       <div className="hidden md:block">
         <AppSidebar />
       </div>
@@ -253,7 +266,7 @@ function AppLayout() {
       </footer>
 
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur md:hidden">
-        <div className="grid grid-cols-5 gap-1">
+        <div className="grid grid-cols-6 gap-1">
           {mobileNavItems.map(item => {
             const Icon = item.icon
             const isActive = item.active(location.pathname)
@@ -328,6 +341,7 @@ function RootComponent() {
   }
 
   return (
+    <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <SessionProvider initialSession={initialSession}>
         <LiveStoreProvider
@@ -341,9 +355,12 @@ function RootComponent() {
           storeId={storeId}
           batchUpdates={batchUpdates}
         >
-          <AppLayout />
+          <NuqsAdapter>
+            <AppLayout />
+          </NuqsAdapter>
         </LiveStoreProvider>
       </SessionProvider>
     </ThemeProvider>
+    </QueryClientProvider>
   )
 }

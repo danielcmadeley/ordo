@@ -1,11 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useStore } from '@livestore/react'
 import { tables, events } from '@ordo/shared/livestore-schema'
 import { queryDb } from '@livestore/livestore'
+import { createStandardSchemaV1, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { requireAuthSession } from '@/lib/auth-guards'
+import { useEmbedItem } from '@/lib/embed'
 
 export const Route = createFileRoute('/project-manager/tasks')({
+  validateSearch: createStandardSchemaV1({
+    status: parseAsStringLiteral(['all', 'active', 'completed'] as const),
+    priority: parseAsStringLiteral(['all', '1', '2', '3', '4'] as const),
+    sort: parseAsStringLiteral(['createdAt', 'dueDate', 'priority'] as const),
+  }, { partialOutput: true }),
   component: TasksPage,
   beforeLoad: requireAuthSession,
 })
@@ -25,11 +32,32 @@ function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+const TASK_STATUS_VALUES = ['all', 'active', 'completed'] as const
+const TASK_PRIORITY_VALUES = ['all', '1', '2', '3', '4'] as const
+const TASK_SORT_VALUES = ['createdAt', 'dueDate', 'priority'] as const
+
+type TaskStatusFilter = (typeof TASK_STATUS_VALUES)[number]
+type TaskPriorityFilter = (typeof TASK_PRIORITY_VALUES)[number]
+type TaskSortKey = (typeof TASK_SORT_VALUES)[number]
+
 function TasksPage() {
   const { store } = useStore()
-  const [filterStatus, setFilterStatus] = useState<'All' | 'Active' | 'Completed'>('All')
-  const [filterPriority, setFilterPriority] = useState<number | 'All'>('All')
-  const [sortBy, setSortBy] = useState<'createdAt' | 'dueDate' | 'priority'>('createdAt')
+  const embed = useEmbedItem()
+  const [{ status, priority, sort }, setSearch] = useQueryStates({
+    status: parseAsStringLiteral(TASK_STATUS_VALUES)
+      .withDefault('all')
+      .withOptions({ history: 'replace' }),
+    priority: parseAsStringLiteral(TASK_PRIORITY_VALUES)
+      .withDefault('all')
+      .withOptions({ history: 'replace' }),
+    sort: parseAsStringLiteral(TASK_SORT_VALUES)
+      .withDefault('createdAt')
+      .withOptions({ history: 'replace' }),
+  })
+
+  const filterStatus = status
+  const filterPriority = priority
+  const sortBy = sort
 
   const tasks$ = useMemo(() => queryDb(() => tables.tasks.where({}), { label: 'all-tasks-view' }), [])
   const projects$ = useMemo(() => queryDb(() => tables.projects.where({}), { label: 'projects-for-tasks' }), [])
@@ -41,8 +69,8 @@ function TasksPage() {
   )
 
   const filtered = allTasks
-    .filter(t => filterStatus === 'All' ? true : filterStatus === 'Completed' ? t.completed : !t.completed)
-    .filter(t => filterPriority === 'All' ? true : t.priority === filterPriority)
+    .filter(t => filterStatus === 'all' ? true : filterStatus === 'completed' ? t.completed : !t.completed)
+    .filter(t => filterPriority === 'all' ? true : t.priority === Number(filterPriority))
     .sort((a, b) => {
       if (sortBy === 'priority') return b.priority - a.priority
       if (sortBy === 'dueDate') return (a.dueDate || Infinity) - (b.dueDate || Infinity)
@@ -62,6 +90,7 @@ function TasksPage() {
     const timestamp = Date.now()
     store.commit(events.taskDeleted({ id }))
     store.commit(events.historyRecorded({ id: timestamp, action: 'Deleted', entityType: 'task', entityId: id, entityText: text, timestamp }))
+    embed.mutate({ id: String(id), type: 'task', action: 'delete', content: '' })
   }
 
   return (
@@ -74,22 +103,22 @@ function TasksPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-6">
         <div className="flex gap-1 border border-border bg-muted/30 rounded-lg p-1">
-          {(['All', 'Active', 'Completed'] as const).map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)}
+          {(['all', 'active', 'completed'] as const).map(s => (
+            <button key={s} onClick={() => { void setSearch({ status: s }) }}
               className={`px-3 py-1 text-xs rounded-md transition-colors ${filterStatus === s ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
-              {s}
+              {s === 'all' ? 'All' : s === 'active' ? 'Active' : 'Completed'}
             </button>
           ))}
         </div>
         <div className="flex gap-1 border border-border bg-muted/30 rounded-lg p-1">
-          {(['All', 1, 2, 3, 4] as const).map(p => (
-            <button key={p} onClick={() => setFilterPriority(p)}
+          {(['all', '1', '2', '3', '4'] as const).map(p => (
+            <button key={p} onClick={() => { void setSearch({ priority: p }) }}
               className={`px-3 py-1 text-xs rounded-md transition-colors ${filterPriority === p ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
-              {p === 'All' ? 'All' : PRIORITY_LABEL[p]}
+              {p === 'all' ? 'All' : PRIORITY_LABEL[Number(p)]}
             </button>
           ))}
         </div>
-        <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+        <select value={sortBy} onChange={e => { void setSearch({ sort: e.target.value as TaskSortKey }) }}
           className="px-3 py-1.5 text-xs border border-input bg-background rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="createdAt">Sort: Created</option>
           <option value="dueDate">Sort: Due date</option>

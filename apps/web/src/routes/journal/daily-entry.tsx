@@ -3,16 +3,13 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import { useEffect, useMemo, useState } from 'react'
+import { createStandardSchemaV1, parseAsNumberLiteral, useQueryState } from 'nuqs'
 import { events, tables, type JournalMainFocus } from '@ordo/shared/livestore-schema'
 import { Button } from '@/components/ui/button'
 import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
 import { requireAuthSession } from '@/lib/auth-guards'
 import { cn } from '@/lib/utils'
-
-export const Route = createFileRoute('/journal/daily-entry')({
-  component: JournalDailyEntryPage,
-  beforeLoad: requireAuthSession,
-})
+import { useEmbedItem, stripHtml } from '@/lib/embed'
 
 type JournalFormState = {
   feeling: 1 | 2 | 3 | 4 | null
@@ -22,6 +19,16 @@ type JournalFormState = {
 }
 
 type JournalStep = 0 | 1 | 2 | 3 | 4
+
+const JOURNAL_STEPS = [0, 1, 2, 3, 4] as const
+
+export const Route = createFileRoute('/journal/daily-entry')({
+  validateSearch: createStandardSchemaV1({
+    step: parseAsNumberLiteral(JOURNAL_STEPS),
+  }, { partialOutput: true }),
+  component: JournalDailyEntryPage,
+  beforeLoad: requireAuthSession,
+})
 
 const DEFAULT_FORM: JournalFormState = {
   feeling: null,
@@ -101,11 +108,24 @@ function calculateCurrentStreak(dateKeys: string[]) {
 
 function JournalDailyEntryPage() {
   const navigate = useNavigate()
+  const search = Route.useSearch()
   const { store } = useStore()
+  const embed = useEmbedItem()
   const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null)
-  const [currentStep, setCurrentStep] = useState<JournalStep>(0)
+  const [stepQuery, setStepQuery] = useQueryState(
+    'step',
+    parseAsNumberLiteral(JOURNAL_STEPS)
+      .withDefault(0)
+      .withOptions({ history: 'replace' })
+  )
   const [saveState, setSaveState] = useState<'saved' | 'unsaved' | 'saving'>('saved')
   const [formValues, setFormValues] = useState<JournalFormState>(DEFAULT_FORM)
+  const currentStep = stepQuery as JournalStep
+  const hasStepInUrl = typeof search.step === 'number'
+
+  const setCurrentStep = (step: JournalStep) => {
+    void setStepQuery(step)
+  }
 
   const form = useForm({
     defaultValues: DEFAULT_FORM,
@@ -174,16 +194,18 @@ function JournalDailyEntryPage() {
 
     const entryFilled = hasMeaningfulContent(nextValues.entryContent)
     const hadEdited = selectedEntry.updatedAt !== selectedEntry.createdAt
-    setCurrentStep(
-      getFirstIncompleteStep({
-        feeling: hadEdited || selectedEntry.feeling !== 3 || entryFilled,
-        sleep: hadEdited || selectedEntry.sleepQuality !== 3 || entryFilled,
-        focus: hadEdited || selectedEntry.mainFocus !== 'projects' || entryFilled,
-        entry: entryFilled,
-      })
-    )
+    if (!hasStepInUrl) {
+      setCurrentStep(
+        getFirstIncompleteStep({
+          feeling: hadEdited || selectedEntry.feeling !== 3 || entryFilled,
+          sleep: hadEdited || selectedEntry.sleepQuality !== 3 || entryFilled,
+          focus: hadEdited || selectedEntry.mainFocus !== 'projects' || entryFilled,
+          entry: entryFilled,
+        })
+      )
+    }
     setSaveState('saved')
-  }, [form, selectedEntry])
+  }, [form, hasStepInUrl, selectedEntry])
 
   const normalizedFeeling = formValues.feeling ?? 3
   const normalizedSleepQuality = formValues.sleepQuality ?? 3
@@ -233,6 +255,7 @@ function JournalDailyEntryPage() {
     )
 
     recordHistory('Created', id, `Journal ${dateKey}`)
+    embed.mutate({ id: String(id), type: 'journal', action: 'upsert', title: `Journal ${dateKey}`, content: '' })
     setSelectedEntryId(id)
   }
 
@@ -256,6 +279,13 @@ function JournalDailyEntryPage() {
       })
     )
     recordHistory('Updated', selectedEntry.id, `Journal ${selectedEntry.dateKey}`)
+    embed.mutate({
+      id: String(selectedEntry.id),
+      type: 'journal',
+      action: 'upsert',
+      title: `Journal ${selectedEntry.dateKey}`,
+      content: stripHtml(formValues.entryContent),
+    })
     setSaveState('saved')
   }
 
@@ -265,6 +295,7 @@ function JournalDailyEntryPage() {
 
     store.commit(events.journalEntryDeleted({ id }))
     recordHistory('Deleted', id, `Journal ${target.dateKey}`)
+    embed.mutate({ id: String(id), type: 'journal', action: 'delete', content: '' })
     if (selectedEntryId === id) setSelectedEntryId(null)
   }
 

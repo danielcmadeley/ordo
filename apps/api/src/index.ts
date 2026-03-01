@@ -5,19 +5,31 @@ import { SyncBackendDO } from './sync/client-ws'
 import { createAuth } from './auth'
 import { appRouter } from './orpc/router'
 import { RPCHandler } from '@orpc/server/fetch'
+import { registerChatRoute } from './ai/chat'
+import { registerEmbedRoute } from './ai/embed'
+import { registerAccountRoutes } from './accounts/routes'
+import { registerXRoutes } from './x/routes'
+import { enqueueDueScheduledPosts, handleScheduledPostQueue } from './x/scheduled'
 import { OpenAPIHandler } from '@orpc/openapi/fetch'
 import { OpenAPIGenerator } from '@orpc/openapi'
 import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4'
 
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 
-type Bindings = {
+export type Bindings = {
   auth_db: D1Database
+  SYNC_BACKEND_DO: DurableObjectNamespace<SyncBackendDO>
+  VECTORIZE: VectorizeIndex
+  AI: Ai
   BETTER_AUTH_URL: string
   BETTER_AUTH_SECRET: string
   GOOGLE_CLIENT_ID?: string
   GOOGLE_CLIENT_SECRET?: string
-  SYNC_BACKEND_DO: DurableObjectNamespace<SyncBackendDO>
+  X_CLIENT_ID: string
+  X_CLIENT_SECRET?: string
+  X_REDIRECT_URI: string
+  X_SCOPES?: string
+  X_JOBS_QUEUE: Queue
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -30,12 +42,19 @@ app.use('*', cors({
     'Content-Type',
     'Authorization',
     'Cookie',
+    'User-Agent',
     'X-Better-Auth-CSRF',
     'X-Better-Auth-Callback-URL',
     'X-Requested-With',
   ],
   credentials: true,
 }))
+
+// AI endpoints
+registerChatRoute(app)
+registerEmbedRoute(app)
+registerAccountRoutes(app)
+registerXRoutes(app)
 
 // Health check
 app.get('/health', (c) => {
@@ -95,6 +114,7 @@ app.use('/rpc/*', async (c, next) => {
       headers: c.req.raw.headers,
       db: c.env.auth_db,
       auth,
+      env: c.env,
     }
   })
 
@@ -134,6 +154,7 @@ app.use('/api/*', async (c, next) => {
       headers: c.req.raw.headers,
       db: c.env.auth_db,
       auth,
+      env: c.env,
     }
   })
 
@@ -163,7 +184,175 @@ app.get('/openapi.json', async (c) => {
     ],
   })
 
-  return c.json(spec)
+  // Merge raw Hono AI routes that are not in the oRPC router
+  const aiPaths = {
+    '/api/ai/embed': {
+      post: {
+        tags: ['AI'],
+        summary: 'Embed a note, journal entry, task, or project',
+        description: 'Generates a vector embedding and upserts (or deletes) it in Vectorize. Called client-side after every LiveStore write.',
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['id', 'type', 'action', 'content'],
+                properties: {
+                  id: { type: 'string', description: 'LiveStore item ID' },
+                  type: { type: 'string', enum: ['note', 'journal', 'task', 'project'] },
+                  action: { type: 'string', enum: ['upsert', 'delete'] },
+                  title: { type: 'string' },
+                  content: { type: 'string', description: 'Plain text content (HTML stripped client-side)' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'OK', content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' } } } } } },
+          '400': { description: 'Invalid input or missing text' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/api/ai/chat': {
+      post: {
+        tags: ['AI'],
+        summary: 'Streaming RAG chat',
+        description: 'Embeds the user question, searches Vectorize for relevant context, and streams a response via AI SDK UI message stream.',
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['messages'],
+                properties: {
+                  messages: {
+                    type: 'array',
+                    description: 'AI SDK v6 UIMessage array',
+                    items: { type: 'object' },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'AI SDK UI message stream (text/event-stream)' },
+          '400': { description: 'No message text found' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+  }
+
+  const utilityPaths = {
+    '/health': {
+      get: {
+        tags: ['System'],
+        summary: 'Health check',
+        responses: {
+          '200': {
+            description: 'OK',
+            content: { 'application/json': { schema: { type: 'object', properties: { status: { type: 'string' }, timestamp: { type: 'string', format: 'date-time' } } } } },
+          },
+        },
+      },
+    },
+    '/api/auth/sign-up/email': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Sign up with email + password',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email', 'password', 'name'],
+                properties: {
+                  email: { type: 'string', format: 'email' },
+                  password: { type: 'string', minLength: 8 },
+                  name: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'User created and session cookie set' },
+          '422': { description: 'Email already in use or invalid input' },
+        },
+      },
+    },
+    '/api/auth/sign-in/email': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Sign in with email + password',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email', 'password'],
+                properties: {
+                  email: { type: 'string', format: 'email' },
+                  password: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Session cookie set' },
+          '401': { description: 'Invalid credentials' },
+        },
+      },
+    },
+    '/api/auth/sign-out': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Sign out',
+        responses: {
+          '200': { description: 'Session cookie cleared' },
+        },
+      },
+    },
+    '/api/auth/get-session': {
+      get: {
+        tags: ['Auth'],
+        summary: 'Get current session',
+        responses: {
+          '200': {
+            description: 'Current session and user, or null if unauthenticated',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    session: { type: 'object', nullable: true },
+                    user: { type: 'object', nullable: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }
+
+  const merged = {
+    ...spec,
+    paths: { ...spec.paths, ...aiPaths, ...utilityPaths },
+  }
+
+  return c.json(merged)
 })
 
 // Scalar API Documentation UI
@@ -199,4 +388,10 @@ export { SyncBackendDO }
 // Export default for Cloudflare Workers
 export default {
   fetch: app.fetch,
+  scheduled: async (_controller: ScheduledController, env: Bindings, _ctx: ExecutionContext) => {
+    await enqueueDueScheduledPosts(env)
+  },
+  queue: async (batch: MessageBatch<unknown>, env: Bindings, _ctx: ExecutionContext) => {
+    await handleScheduledPostQueue(batch, env)
+  },
 }

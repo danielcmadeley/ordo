@@ -51,6 +51,7 @@ bun run deploy:api    # Deploy API to Cloudflare Workers
 |------|---------|
 | `apps/web/src/routes/__root.tsx` | Root route with auth guard |
 | `apps/web/src/routes/login.tsx` | Login/signup page |
+| `apps/web/src/routes/settings.tsx` | Settings page (appearance, activity, connected accounts) |
 | `apps/marketing/src/pages/index.astro` | Marketing landing page entry |
 | `apps/marketing/src/components/marketing/MarketingPage.tsx` | Marketing page content + theme toggle |
 | `apps/web/src/lib/authClient.ts` | BetterAuth client + offline session fallback |
@@ -63,6 +64,8 @@ bun run deploy:api    # Deploy API to Cloudflare Workers
 | `apps/web/src/livestore/livestore.worker.ts` | LiveStore worker + sync URL resolution (`VITE_SYNC_URL` / `VITE_API_URL`) |
 | `apps/api/src/index.ts` | Hono app entry + route registration |
 | `apps/api/src/auth/index.ts` | BetterAuth server config |
+| `apps/api/src/accounts/routes.ts` | Connected account status endpoint (`/api/accounts/status`) |
+| `apps/api/src/x/routes.ts` | X OAuth + CRM integration routes |
 | `apps/api/src/sync/client-ws.ts` | LiveStore WebSocket sync via Durable Objects |
 | `apps/api/src/orpc/router.ts` | oRPC router |
 | `packages/shared/src/livestore-schema.ts` | LiveStore events/tables/state |
@@ -95,7 +98,42 @@ BETTER_AUTH_URL=http://localhost:3000  # Local: frontend origin; Production: aut
 ```
 BETTER_AUTH_SECRET=...
 BETTER_AUTH_URL=http://localhost:3000  # Use :4173 when running `vite preview`
+X_CLIENT_ID=...                         # X OAuth 2.0 Client ID (not API Key)
+X_CLIENT_SECRET=...                     # X OAuth 2.0 Client Secret
+X_REDIRECT_URI=http://localhost:3000/api/x/callback
+X_SCOPES=tweet.read tweet.write users.read bookmark.read offline.access
 ```
+
+### X OAuth Notes (CRM)
+
+- Per-user X connections are implemented via API routes under `/api/x/*`.
+- OAuth `returnTo` supports full allowed app URLs (for example `/crm` and `/settings`) and callback status is returned via `x`, `x_reason`, and `x_http_status`.
+- Use OAuth 2.0 Client ID/Secret from X “User authentication settings”; do not use API Key/Secret for this flow.
+- For local dev, prefer `X_REDIRECT_URI=http://localhost:3000/api/x/callback` so callback stays on web origin and is proxied to API.
+- X app settings should include callback URLs for both local and prod:
+  - `http://localhost:3000/api/x/callback`
+  - `https://api.getordo.co/api/x/callback` (prod)
+
+### Connected Accounts (Settings)
+
+- The settings page includes a Connected Accounts section for Google and X.
+- Status is loaded from `GET /api/accounts/status`.
+- `googleConnected` is sourced from BetterAuth `accounts` (`provider_id = 'google'`).
+- `xConnected`, `xUsername`, and `xProfilePending` are sourced from `x_accounts`.
+
+### D1 Migration Notes
+
+- `bun run db:migrate` uses Drizzle with `d1-http` and applies to the D1 configured in root `.env` (remote), not local SQLite.
+- To test migrations locally, use Wrangler local D1 migrations:
+
+```bash
+bunx wrangler d1 migrations apply react-vite-tanstack-router --local --config apps/api/wrangler.jsonc
+```
+
+### Secret Hygiene
+
+- Never commit secrets or post raw credentials in issues/chat.
+- If a secret is exposed, rotate it immediately (BetterAuth, Google OAuth, X OAuth).
 
 `apps/web/.env.production`:
 ```

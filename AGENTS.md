@@ -69,7 +69,35 @@ BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=http://localhost:3000  # Use active frontend origin in dev/preview (:3000 or :4173)
 GOOGLE_CLIENT_ID=       # Optional
 GOOGLE_CLIENT_SECRET=   # Optional
+X_CLIENT_ID=            # X OAuth 2.0 Client ID (not API Key)
+X_CLIENT_SECRET=        # X OAuth 2.0 Client Secret
+X_REDIRECT_URI=http://localhost:3000/api/x/callback
+X_SCOPES=tweet.read tweet.write users.read bookmark.read offline.access
 ```
+
+### X OAuth (CRM) Notes
+
+- X integration is per-user and implemented server-side under `/api/x/*`.
+- X OAuth `returnTo` supports full allowed app URLs (for example `/crm` or `/settings`) and callback status is returned via `x`, `x_reason`, and `x_http_status` query params.
+- Use OAuth 2.0 Client ID/Secret from X User Auth settings. Do not use API Key/Secret for OAuth 2.0 auth code flow.
+- For local development, use callback `http://localhost:3000/api/x/callback` so the callback lands on web origin and is proxied to API.
+- Keep both callbacks configured in X app settings:
+  - `http://localhost:3000/api/x/callback` (dev)
+  - `https://api.getordo.co/api/x/callback` (prod)
+
+### D1 Migration Notes
+
+- `bun run db:migrate` applies via Drizzle `d1-http` to the D1 configured in root `.env` (remote target).
+- For local D1 migration testing, use:
+
+```bash
+bunx wrangler d1 migrations apply react-vite-tanstack-router --local --config apps/api/wrangler.jsonc
+```
+
+### Secret Hygiene
+
+- Never commit or share plaintext secrets in chat/PRs.
+- Rotate any exposed credentials immediately.
 
 ## Common Commands
 
@@ -96,6 +124,7 @@ bun install
 
 - **`/`** - Dashboard (protected)
 - **`/inbox`** - Todo list using LiveStore (protected)
+- **`/crm`** - X CRM workspace (protected)
 - **`/settings`** - User settings (protected)
 - **`/login`** - Authentication page (public only)
 
@@ -111,6 +140,13 @@ All routes except `/login` are protected using TanStack Router's `beforeLoad`.
 6. **Security**: Routes protected client-side via `beforeLoad`, data protected server-side via oRPC auth middleware
 7. **Offline auth UX**: BetterAuth uses server-validated cookies, so client routes use cached session fallback for offline hard refreshes after an online login
 8. **Production sync URL**: LiveStore sync defaults to `VITE_SYNC_URL || VITE_API_URL || location.origin`, so set `VITE_API_URL` (or `VITE_SYNC_URL`) to your API domain in production
+
+## Connected Accounts (Settings)
+
+- Settings now includes a **Connected Accounts** section for Google + X.
+- Connection status is served by `GET /api/accounts/status`.
+- `googleConnected` is derived from BetterAuth `accounts` (`provider_id = 'google'`).
+- `xConnected`, `xUsername`, and `xProfilePending` are derived from `x_accounts`.
 
 ## Code Style Guidelines
 

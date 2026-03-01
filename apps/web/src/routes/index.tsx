@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { useStore } from '@livestore/react'
 import { queryDb } from '@livestore/livestore'
@@ -36,6 +36,7 @@ function parseLabels(raw: string): string[] {
 function DashboardPage() {
   const { user } = useCurrentUser()
   const { store } = useStore()
+  const navigate = useNavigate()
 
   const projects$ = useMemo(() => queryDb(() => tables.projects.where({}), { label: 'home-projects' }), [])
   const tasks$ = useMemo(() => queryDb(() => tables.tasks.where({}), { label: 'home-tasks' }), [])
@@ -257,7 +258,11 @@ function DashboardPage() {
           </article>
         </section>
 
-        <section className="mx-auto mt-8 w-full max-w-5xl rounded-2xl border border-border/70 bg-card/60 p-3">
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/ai' })}
+          className="mx-auto mt-8 w-full max-w-5xl rounded-2xl border border-border/70 bg-card/60 p-3 text-left transition-colors hover:border-border"
+        >
           <div className="rounded-lg bg-background/40 px-2 py-2 text-sm text-muted-foreground">Ask Anything...</div>
           <div className="mt-2 flex items-center justify-between">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -266,15 +271,11 @@ function DashboardPage() {
               <span className="text-base">◎</span>
               <span className="text-base">↻</span>
             </div>
-            <button
-              type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground"
-              aria-label="Send"
-            >
+            <div className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground">
               ↑
-            </button>
+            </div>
           </div>
-        </section>
+        </button>
 
         <div className="h-4" />
       </div>

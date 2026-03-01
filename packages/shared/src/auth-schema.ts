@@ -83,4 +83,49 @@ export const verifications = sqliteTable("verifications", {
     .notNull(),
 });
 
-export const schema = { users, sessions, accounts, verifications }
+export const xAccounts = sqliteTable("x_accounts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  xUserId: text("x_user_id").notNull(),
+  username: text("username").notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  scope: text("scope"),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const xScheduledPosts = sqliteTable("x_scheduled_posts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  scheduledFor: integer("scheduled_for", { mode: "timestamp_ms" }).notNull(),
+  status: text("status", {
+    enum: ["pending", "queued", "sending", "sent", "failed", "cancelled"],
+  }).notNull(),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  lastError: text("last_error"),
+  xTweetId: text("x_tweet_id"),
+  sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+  cancelledAt: integer("cancelled_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const schema = { users, sessions, accounts, verifications, xAccounts, xScheduledPosts }

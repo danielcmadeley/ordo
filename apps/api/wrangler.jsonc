@@ -30,9 +30,43 @@
 			"migrations_dir": "../../drizzle"
 		}
 	],
+	"vectorize": [
+		{
+			"binding": "VECTORIZE",
+			"index_name": "ordo-ai",
+			"remote": true
+		}
+	],
+	"ai": {
+		"binding": "AI",
+		"remote": true
+	},
+	"queues": {
+		"producers": [
+			{
+				"binding": "X_JOBS_QUEUE",
+				"queue": "ordo-x-jobs"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "ordo-x-jobs",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 5
+			}
+		]
+	},
+	"triggers": {
+		"crons": [
+			"* * * * *"
+		]
+	},
 	"vars": {
 		"BETTER_AUTH_URL": "https://api.getordo.co",
-		"GOOGLE_CLIENT_ID": "246757812431-a1nev5qn06qt9dqcpiohajmt59kvss3q.apps.googleusercontent.com"
+		"GOOGLE_CLIENT_ID": "246757812431-a1nev5qn06qt9dqcpiohajmt59kvss3q.apps.googleusercontent.com",
+		"X_CLIENT_ID": "VUJiWTZxN2kwdkgwRC1vOVJ4MVo6MTpjaQ",
+		"X_REDIRECT_URI": "https://api.getordo.co/api/x/callback"
 	},
 	"routes": [
 		{

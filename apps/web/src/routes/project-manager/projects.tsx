@@ -33,6 +33,7 @@ import {
   type TaskRow,
 } from '@/features/project-manager/projects/shared'
 import { isProjectView, type ProjectView } from '@/lib/project-views'
+import { useEmbedItem } from '@/lib/embed'
 import type { Feature as CalendarFeature } from '@/components/kibo-ui/calendar'
 import { type GanttFeature } from '@/components/kibo-ui/gantt'
 import { type ColumnDef, TableColumnHeader } from '@/components/kibo-ui/table'
@@ -53,6 +54,7 @@ function ProjectsPage() {
   const isProjectDialogOpen = search.dialog === 'project'
   const isTaskDialogOpen = search.dialog === 'task'
   const { store } = useStore()
+  const embed = useEmbedItem()
 
   const [createTaskForm, setCreateTaskForm] = useState<TaskCreateFormState>(EMPTY_TASK_CREATE_FORM)
   const [projectForm, setProjectForm] = useState<ProjectCreateFormState>(EMPTY_PROJECT_CREATE_FORM)
@@ -115,6 +117,8 @@ function ProjectsPage() {
     const timestamp = Date.now()
     store.commit(events.taskUpdated({ id, text, description, projectId, priority, labels, startDate, dueDate: safeDueDate }))
     store.commit(events.historyRecorded({ id: timestamp, action: 'Updated', entityType: 'task', entityId: id, entityText: text, timestamp }))
+    const taskProjectName = projectId === 0 ? 'Inbox' : (projectLookup.get(projectId)?.name ?? 'Unknown project')
+    embed.mutate({ id: String(id), type: 'task', action: 'upsert', title: text, content: `Location: ${taskProjectName}. ${description}`.trim() })
   }
 
   const createProject = () => {
@@ -139,6 +143,7 @@ function ProjectsPage() {
       entityText: projectForm.name.trim(),
       timestamp: id,
     }))
+    embed.mutate({ id: String(id), type: 'project', action: 'upsert', title: projectForm.name.trim(), content: projectForm.description.trim() })
 
     setProjectForm(EMPTY_PROJECT_CREATE_FORM)
     closeDialog()
@@ -165,6 +170,7 @@ function ProjectsPage() {
       entityText: editProjectForm.name.trim(),
       timestamp,
     }))
+    embed.mutate({ id: String(editingProjectId), type: 'project', action: 'upsert', title: editProjectForm.name.trim(), content: editProjectForm.description.trim() })
 
     setEditingProjectId(null)
   }
@@ -174,6 +180,7 @@ function ProjectsPage() {
     const timestamp = Date.now()
     store.commit(events.projectDeleted({ id }))
     store.commit(events.historyRecorded({ id: timestamp, action: 'Deleted', entityType: 'project', entityId: id, entityText: name, timestamp }))
+    embed.mutate({ id: String(id), type: 'project', action: 'delete', content: '' })
   }
 
   const createTask = () => {
@@ -197,6 +204,8 @@ function ProjectsPage() {
       dueDate: safeDueDate,
     }))
     store.commit(events.historyRecorded({ id, action: 'Created', entityType: 'task', entityId: id, entityText: createTaskForm.text.trim(), timestamp: id }))
+    const newTaskProjectName = createTaskForm.projectId === 0 ? 'Inbox' : (projectLookup.get(createTaskForm.projectId)?.name ?? 'Unknown project')
+    embed.mutate({ id: String(id), type: 'task', action: 'upsert', title: createTaskForm.text.trim(), content: `Location: ${newTaskProjectName}. ${createTaskForm.description.trim()}`.trim() })
 
     setCreateTaskForm(EMPTY_TASK_CREATE_FORM)
     closeDialog()
@@ -223,6 +232,7 @@ function ProjectsPage() {
     const timestamp = Date.now()
     store.commit(events.taskDeleted({ id }))
     store.commit(events.historyRecorded({ id: timestamp, action: 'Deleted', entityType: 'task', entityId: id, entityText: text, timestamp }))
+    embed.mutate({ id: String(id), type: 'task', action: 'delete', content: '' })
     if (selectedTaskId === id) setSelectedTaskId(null)
   }
 

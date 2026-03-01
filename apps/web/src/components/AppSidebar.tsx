@@ -18,6 +18,7 @@ import {
   SearchIcon,
   ArrowDown01Icon,
   ArrowUp01Icon,
+  BubbleChatAddIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import authClient, { invalidateSessionCache } from '@/lib/authClient'
@@ -56,6 +57,11 @@ import {
 } from '@/components/ui/command'
 
 const topNavItems = [
+  {
+    to: '/ai' as const,
+    icon: BubbleChatAddIcon,
+    label: 'Ask Ordo',
+  },
   {
     to: '/knowledge-base' as const,
     icon: Book01Icon,

@@ -1,12 +1,14 @@
 .simple-editor-wrapper {
   --tt-toolbar-height: 44px;
   --tt-theme-text: var(--tt-gray-light-900);
+  --tt-toolbar-bg-color: transparent;
+  --tt-toolbar-border-color: var(--border);
   width: 100%;
   min-height: 460px;
   overflow: auto;
   border-radius: 0.75rem;
   border: 1px solid var(--border);
-  background: var(--background);
+  background: transparent;
 
   .dark & {
     --tt-theme-text: var(--tt-gray-dark-900);
@@ -26,6 +28,7 @@
   flex: 1;
   min-height: 400px;
   padding: 1.5rem 1.5rem 6rem;
+  background: transparent;
 }
 
 @media screen and (max-width: 480px) {

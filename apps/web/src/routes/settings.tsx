@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
+import authClient from '@/lib/authClient'
 import { requireAuthSession } from '@/lib/auth-guards'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useStore } from '@livestore/react'
@@ -28,6 +29,32 @@ const ENTITY_STYLES: Record<string, string> = {
   note: 'bg-primary/15 text-primary',
 }
 
+const apiBase = import.meta.env.VITE_API_URL || ''
+
+type ConnectedAccountsStatus = {
+  googleConnected: boolean
+  xConnected: boolean
+  xUsername?: string
+  xProfilePending?: boolean
+}
+
+async function apiRequest<T>(path: string, init?: RequestInit) {
+  const response = await fetch(`${apiBase}${path}`, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+    ...init,
+  })
+
+  const json = await response.json().catch(() => ({})) as T & { error?: string }
+  if (!response.ok) {
+    throw new Error(json.error || 'Request failed')
+  }
+  return json
+}
+
 function formatDate(timestamp: number) {
   return new Date(timestamp).toLocaleString(undefined, {
     month: 'short',
@@ -42,6 +69,10 @@ function SettingsPage() {
   const { store } = useStore()
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [accountsStatus, setAccountsStatus] = useState<ConnectedAccountsStatus | null>(null)
+  const [accountsLoading, setAccountsLoading] = useState(true)
+  const [accountsError, setAccountsError] = useState<string | null>(null)
+  const [isGoogleConnecting, setIsGoogleConnecting] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -53,6 +84,10 @@ function SettingsPage() {
   )
   const historyRows = store.useQuery(history$)
   const sortedHistory = [...historyRows].sort((a, b) => b.timestamp - a.timestamp)
+  const queryParams = useMemo(() => new URLSearchParams(window.location.search), [])
+  const xQueryStatus = queryParams.get('x')
+  const xQueryReason = queryParams.get('x_reason')
+  const xQueryHttpStatus = queryParams.get('x_http_status')
 
   const user = sessionUser?.id && sessionUser?.email
     ? {
@@ -62,6 +97,70 @@ function SettingsPage() {
       image: sessionUser.image,
     }
     : null
+
+  useEffect(() => {
+    let active = true
+
+    const loadConnectedAccounts = async () => {
+      setAccountsLoading(true)
+      try {
+        const data = await apiRequest<ConnectedAccountsStatus>('/api/accounts/status')
+        if (!active) return
+        setAccountsStatus(data)
+        setAccountsError(null)
+      } catch (error) {
+        if (!active) return
+        setAccountsError(error instanceof Error ? error.message : 'Unable to load connected accounts')
+      } finally {
+        if (active) {
+          setAccountsLoading(false)
+        }
+      }
+    }
+
+    void loadConnectedAccounts()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!xQueryStatus) return
+    const isConnectedStatus = xQueryStatus === 'connected' || xQueryStatus === 'connected_profile_pending'
+    if (isConnectedStatus) {
+      setAccountsError(null)
+      return
+    }
+
+    const parts = [
+      `X OAuth callback failed (${xQueryStatus}).`,
+      xQueryHttpStatus ? `HTTP ${xQueryHttpStatus}.` : '',
+      xQueryReason || '',
+    ].filter(Boolean)
+    setAccountsError(parts.join(' '))
+  }, [xQueryHttpStatus, xQueryReason, xQueryStatus])
+
+  const connectGoogle = async () => {
+    setIsGoogleConnecting(true)
+    setAccountsError(null)
+    try {
+      await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: window.location.href,
+      })
+    } catch {
+      setAccountsError('Unable to start Google sign-in')
+    } finally {
+      setIsGoogleConnecting(false)
+    }
+  }
+
+  const connectX = () => {
+    setAccountsError(null)
+    const connectUrl = `${apiBase}/api/x/connect?returnTo=${encodeURIComponent(window.location.href)}`
+    window.location.href = connectUrl
+  }
 
   if (isLoading) {
     return (
@@ -118,6 +217,52 @@ function SettingsPage() {
                 </div>
               )}
             </div>
+          </section>
+
+          <section className="mt-4 rounded-xl border border-border/70 bg-card/70 p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Connected Accounts</h2>
+            {accountsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading connections...</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/40 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium">Google</p>
+                    <p className="text-xs text-muted-foreground">
+                      {accountsStatus?.googleConnected ? 'Connected' : 'Not connected'}
+                    </p>
+                  </div>
+                  {accountsStatus?.googleConnected ? (
+                    <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">Connected</span>
+                  ) : (
+                    <Button size="sm" onClick={() => { void connectGoogle() }} disabled={isGoogleConnecting}>
+                      {isGoogleConnecting ? 'Connecting...' : 'Connect'}
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/40 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium">X</p>
+                    <p className="text-xs text-muted-foreground">
+                      {accountsStatus?.xConnected
+                        ? accountsStatus.xProfilePending
+                          ? 'Connected (profile syncing)'
+                          : `Connected${accountsStatus.xUsername ? ` as @${accountsStatus.xUsername}` : ''}`
+                        : 'Not connected'}
+                    </p>
+                  </div>
+                  {accountsStatus?.xConnected ? (
+                    <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">Connected</span>
+                  ) : (
+                    <Button size="sm" onClick={connectX}>
+                      Connect
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+            {accountsError && <p className="mt-3 text-xs text-destructive">{accountsError}</p>}
           </section>
 
           <section className="mt-4 rounded-xl border border-border/70 bg-card/70 p-4">

@@ -3,12 +3,19 @@ import { useState, useMemo } from 'react'
 import { useStore } from '@livestore/react'
 import { tables, events } from '@ordo/shared/livestore-schema'
 import { queryDb } from '@livestore/livestore'
+import { createStandardSchemaV1, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { requireAuthSession } from '@/lib/auth-guards'
+import { useEmbedItem } from '@/lib/embed'
 
 export const Route = createFileRoute('/project-manager/inbox')({
+  validateSearch: createStandardSchemaV1({
+    status: parseAsStringLiteral(['all', 'active', 'completed'] as const),
+  }, { partialOutput: true }),
   component: InboxPage,
   beforeLoad: requireAuthSession,
 })
+
+const INBOX_FILTER_VALUES = ['all', 'active', 'completed'] as const
 
 const PRIORITY_LABEL: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Critical' }
 const PRIORITY_COLOR: Record<number, string> = {
@@ -30,11 +37,17 @@ const EMPTY_FORM = { text: '', description: '', priority: 1, labels: '', dueDate
 
 function InboxPage() {
   const { store } = useStore()
+  const embed = useEmbedItem()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState(EMPTY_FORM)
-  const [filter, setFilter] = useState<'All' | 'Active' | 'Completed'>('All')
+  const [status, setStatus] = useQueryState(
+    'status',
+    parseAsStringLiteral(INBOX_FILTER_VALUES)
+      .withDefault('all')
+      .withOptions({ history: 'replace' })
+  )
 
   const tasks$ = useMemo(
     () => queryDb(() => tables.tasks.where({ projectId: 0 }), { label: 'inbox-tasks' }),
@@ -47,7 +60,7 @@ function InboxPage() {
   const allTasks = store.useQuery(tasks$)
   const projects = store.useQuery(projects$)
   const tasks = allTasks.filter(t =>
-    filter === 'All' ? true : filter === 'Completed' ? t.completed : !t.completed
+    status === 'all' ? true : status === 'completed' ? t.completed : !t.completed
   )
 
   const commitTask = (id: number, f: typeof EMPTY_FORM) => {
@@ -57,6 +70,7 @@ function InboxPage() {
     const dueDate = f.dueDate ? new Date(f.dueDate).getTime() : 0
     store.commit(events.taskCreated({ id, text: f.text.trim(), description: f.description.trim(), projectId: f.projectId, priority: f.priority, labels, createdAt, startDate, dueDate }))
     store.commit(events.historyRecorded({ id, action: 'Created', entityType: 'task', entityId: id, entityText: f.text.trim(), timestamp: id }))
+    embed.mutate({ id: String(id), type: 'task', action: 'upsert', title: f.text.trim(), content: `Location: Inbox. ${f.description.trim()}`.trim() })
   }
 
   const addTask = () => {
@@ -74,6 +88,7 @@ function InboxPage() {
     const dueDate = editForm.dueDate ? new Date(editForm.dueDate).getTime() : 0
     store.commit(events.taskUpdated({ id: editingId, text: editForm.text.trim(), description: editForm.description.trim(), projectId: editForm.projectId, priority: editForm.priority, labels, startDate, dueDate }))
     store.commit(events.historyRecorded({ id: timestamp, action: 'Updated', entityType: 'task', entityId: editingId, entityText: editForm.text.trim(), timestamp }))
+    embed.mutate({ id: String(editingId), type: 'task', action: 'upsert', title: editForm.text.trim(), content: `Location: Inbox. ${editForm.description.trim()}`.trim() })
     setEditingId(null)
   }
 
@@ -89,6 +104,7 @@ function InboxPage() {
     const timestamp = Date.now()
     store.commit(events.taskDeleted({ id }))
     store.commit(events.historyRecorded({ id: timestamp, action: 'Deleted', entityType: 'task', entityId: id, entityText: text, timestamp }))
+    embed.mutate({ id: String(id), type: 'task', action: 'delete', content: '' })
   }
 
   const toggleTask = (id: number, completed: boolean) => {
@@ -122,10 +138,10 @@ function InboxPage() {
       )}
 
       <div className="flex gap-1 mb-4 border-b border-border">
-        {(['All', 'Active', 'Completed'] as const).map(tab => (
-          <button key={tab} onClick={() => setFilter(tab)}
-            className={`px-4 py-2 text-sm -mb-px transition-colors ${filter === tab ? 'text-primary font-semibold border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-            {tab}
+        {(['all', 'active', 'completed'] as const).map(tab => (
+          <button key={tab} onClick={() => { void setStatus(tab) }}
+            className={`px-4 py-2 text-sm -mb-px transition-colors ${status === tab ? 'text-primary font-semibold border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+            {tab === 'all' ? 'All' : tab === 'active' ? 'Active' : 'Completed'}
           </button>
         ))}
       </div>

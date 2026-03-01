@@ -39,6 +39,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MiB — covers large wasm + js chunks
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/(api|rpc|sync)\//],
@@ -75,6 +76,20 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-router': ['@tanstack/react-router', '@tanstack/react-query'],
+          'vendor-editor': ['@tiptap/react', '@tiptap/starter-kit'],
+          'vendor-ui': ['@base-ui/react', 'lucide-react', '@hugeicons/react'],
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          'vendor-ai': ['ai', '@ai-sdk/react'],
+        },
+      },
+    },
+  },
   optimizeDeps: {
     exclude: ['@livestore/wa-sqlite'],
   },

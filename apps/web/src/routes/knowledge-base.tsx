@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
 import { cn } from '@/lib/utils'
 import { requireAuthSession } from '@/lib/auth-guards'
+import { useEmbedItem, stripHtml } from '@/lib/embed'
 
 export const Route = createFileRoute('/knowledge-base')({
   component: KnowledgeBasePage,
@@ -27,6 +28,7 @@ function formatDate(ts: number) {
 
 function KnowledgeBasePage() {
   const { store } = useStore()
+  const embed = useEmbedItem()
   const [showNotebookForm, setShowNotebookForm] = useState(false)
   const [notebookForm, setNotebookForm] = useState<NotebookForm>(EMPTY_NOTEBOOK_FORM)
   const [selectedNotebookId, setSelectedNotebookId] = useState<number | null>(null)
@@ -128,6 +130,14 @@ function KnowledgeBasePage() {
     )
 
     touchNotebook(selectedNote.notebookId)
+
+    embed.mutate({
+      id: String(selectedNote.id),
+      type: 'note',
+      action: 'upsert',
+      title: cleanTitle,
+      content: stripHtml(contentDraft),
+    })
 
     setSaveState('saved')
     return true
@@ -290,6 +300,7 @@ function KnowledgeBasePage() {
       })
     )
     touchNotebook(selectedNotebookId)
+    embed.mutate({ id: String(id), type: 'note', action: 'upsert', title: 'Untitled note', content: '' })
     setSelectedNoteId(id)
   }
 
@@ -298,6 +309,7 @@ function KnowledgeBasePage() {
     if (!note) return
     store.commit(events.noteDeleted({ id }))
     recordHistory('Deleted', 'note', id, note.title)
+    embed.mutate({ id: String(id), type: 'note', action: 'delete', content: '' })
   }
 
   return (

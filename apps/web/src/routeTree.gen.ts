@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
 import { Route as FinanceRouteImport } from './routes/finance'
 import { Route as CrmRouteImport } from './routes/crm'
+import { Route as AiRouteImport } from './routes/ai'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectManagerTasksRouteImport } from './routes/project-manager/tasks'
 import { Route as ProjectManagerProjectsRouteImport } from './routes/project-manager/projects'
@@ -47,6 +48,11 @@ const FinanceRoute = FinanceRouteImport.update({
 const CrmRoute = CrmRouteImport.update({
   id: '/crm',
   path: '/crm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiRoute = AiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -98,6 +104,7 @@ const JournalDailyEntryRoute = JournalDailyEntryRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ai': typeof AiRoute
   '/crm': typeof CrmRoute
   '/finance': typeof FinanceRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ai': typeof AiRoute
   '/crm': typeof CrmRoute
   '/finance': typeof FinanceRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
@@ -131,6 +139,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ai': typeof AiRoute
   '/crm': typeof CrmRoute
   '/finance': typeof FinanceRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/ai'
     | '/crm'
     | '/finance'
     | '/knowledge-base'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/ai'
     | '/crm'
     | '/finance'
     | '/knowledge-base'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/ai'
     | '/crm'
     | '/finance'
     | '/knowledge-base'
@@ -198,6 +210,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AiRoute: typeof AiRoute
   CrmRoute: typeof CrmRoute
   FinanceRoute: typeof FinanceRoute
   KnowledgeBaseRoute: typeof KnowledgeBaseRoute
@@ -248,6 +261,13 @@ declare module '@tanstack/react-router' {
       path: '/crm'
       fullPath: '/crm'
       preLoaderRoute: typeof CrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai': {
+      id: '/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -318,6 +338,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AiRoute: AiRoute,
   CrmRoute: CrmRoute,
   FinanceRoute: FinanceRoute,
   KnowledgeBaseRoute: KnowledgeBaseRoute,
