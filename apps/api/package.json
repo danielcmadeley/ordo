@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@livestore/sync-cf": "0.4.0-dev.14",
+    "@ordo/email": "workspace:*",
     "@ordo/shared": "workspace:*",
     "@orpc/openapi": "^1.13.5",
     "@orpc/server": "^1.13.5",
@@ -24,6 +25,8 @@
     "better-auth-cloudflare": "^0.2.8",
     "drizzle-orm": "^0.44.7",
     "hono": "^4.12.2",
+    "react": "^19.2.4",
+    "resend": "^6.9.3",
     "workers-ai-provider": "^3.1.2",
     "zod": "^4.3.6"
   },

@@ -34,8 +34,13 @@ This is a monorepo with the following structure:
 │   ├── shared/        # Shared schemas (LiveStore, BetterAuth)
 │   └── design-system/ # Shared UI primitives + theme tokens/provider
 ├── drizzle/           # Database migrations
+├── examples/          # Reference-only example projects (NOT part of Ordo)
 └── bunfig.toml        # Bun workspace configuration
 ```
+
+## Examples Directory
+
+The `examples/` directory contains **reference-only** example projects (e.g. `examples/gocardless`). These exist purely as context and inspiration for building Ordo. **Do not** import, reference, or use any code from `examples/` in the Ordo application. They are not part of any bun workspace and should never be treated as Ordo source code.
 
 ## Technology Stack
 
@@ -73,6 +78,9 @@ X_CLIENT_ID=            # X OAuth 2.0 Client ID (not API Key)
 X_CLIENT_SECRET=        # X OAuth 2.0 Client Secret
 X_REDIRECT_URI=http://localhost:3000/api/x/callback
 X_SCOPES=tweet.read tweet.write users.read bookmark.read offline.access
+GOCARDLESS_SECRET_ID=   # GoCardless API secret ID
+GOCARDLESS_SECRET_KEY=  # GoCardless API secret key
+GOCARDLESS_BASE_URL=https://bankaccountdata.gocardless.com/api/v2
 ```
 
 ### X OAuth (CRM) Notes
@@ -125,6 +133,7 @@ bun install
 - **`/`** - Dashboard (protected)
 - **`/inbox`** - Todo list using LiveStore (protected)
 - **`/crm`** - X CRM workspace (protected)
+- **`/finance`** - Bank connection + balances + transactions via GoCardless (protected)
 - **`/settings`** - User settings (protected)
 - **`/login`** - Authentication page (public only)
 
@@ -158,10 +167,20 @@ All routes except `/login` are protected using TanStack Router's `beforeLoad`.
 
 ## Connected Accounts (Settings)
 
-- Settings now includes a **Connected Accounts** section for Google + X.
+- Settings now includes a **Connected Accounts** section for Google + X + GoCardless.
 - Connection status is served by `GET /api/accounts/status`.
 - `googleConnected` is derived from BetterAuth `accounts` (`provider_id = 'google'`).
 - `xConnected`, `xUsername`, and `xProfilePending` are derived from `x_accounts`.
+- `gocardlessConnected` and `gocardlessInstitution` are derived from `gocardless_requisitions`.
+
+## GoCardless / Finance
+
+- GoCardless uses **app-level API credentials** (secret_id + secret_key → JWT), not per-user OAuth.
+- Per-user bank connections use **requisitions** stored in `gocardless_requisitions` D1 table.
+- Data endpoints (institutions, accounts, balances, transactions, details, disconnect) are oRPC routes in `apps/api/src/orpc/router.ts`.
+- Bank connect/callback redirect flows are raw Hono routes in `apps/api/src/gocardless/routes.ts`.
+- Account data caching uses KV with TTLs: details=24h, balances=15min, transactions=30min.
+- Finance page UI is at `apps/web/src/routes/finance.tsx`.
 
 ## Code Style Guidelines
 

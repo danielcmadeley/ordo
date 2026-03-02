@@ -176,6 +176,27 @@ export const xBookmarkSyncState = sqliteTable("x_bookmark_sync_state", {
     .notNull(),
 })
 
+export const gocardlessRequisitions = sqliteTable("gocardless_requisitions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  institutionId: text("institution_id").notNull(),
+  institutionName: text("institution_name"),
+  accountIds: text("account_ids"),
+  status: text("status", {
+    enum: ["pending", "linked", "expired"],
+  }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
 export const schema = {
   users,
   sessions,
@@ -186,4 +207,5 @@ export const schema = {
   xBookmarks,
   xBookmarkMedia,
   xBookmarkSyncState,
+  gocardlessRequisitions,
 }

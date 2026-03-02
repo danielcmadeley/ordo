@@ -9,6 +9,7 @@ import { registerChatRoute } from './ai/chat'
 import { registerEmbedRoute } from './ai/embed'
 import { registerAccountRoutes } from './accounts/routes'
 import { registerXRoutes } from './x/routes'
+import { registerGocardlessRoutes } from './gocardless/routes'
 import { enqueueDueScheduledPosts, handleScheduledPostQueue } from './x/scheduled'
 import { OpenAPIHandler } from '@orpc/openapi/fetch'
 import { OpenAPIGenerator } from '@orpc/openapi'
@@ -19,6 +20,7 @@ import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 export type Bindings = {
   auth_db: D1Database
   X_CACHE?: KVNamespace
+  GOCARDLESS_CACHE?: KVNamespace
   SYNC_BACKEND_DO: DurableObjectNamespace<SyncBackendDO>
   VECTORIZE: VectorizeIndex
   AI: Ai
@@ -31,6 +33,10 @@ export type Bindings = {
   X_REDIRECT_URI: string
   X_SCOPES?: string
   X_JOBS_QUEUE: Queue
+  GOCARDLESS_SECRET_ID: string
+  GOCARDLESS_SECRET_KEY: string
+  GOCARDLESS_BASE_URL: string
+  RESEND_API_KEY?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -56,6 +62,7 @@ registerChatRoute(app)
 registerEmbedRoute(app)
 registerAccountRoutes(app)
 registerXRoutes(app)
+registerGocardlessRoutes(app)
 
 // Health check
 app.get('/health', (c) => {
@@ -97,6 +104,7 @@ app.use('/rpc/*', async (c, next) => {
     BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
     GOOGLE_CLIENT_ID: c.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: c.env.GOOGLE_CLIENT_SECRET,
+    RESEND_API_KEY: c.env.RESEND_API_KEY,
   }, c.req.raw.cf as IncomingRequestCfProperties)
 
   // Proxy the request to allow Hono's body parsers to work with oRPC
@@ -137,6 +145,7 @@ app.use('/api/*', async (c, next) => {
     BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
     GOOGLE_CLIENT_ID: c.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: c.env.GOOGLE_CLIENT_SECRET,
+    RESEND_API_KEY: c.env.RESEND_API_KEY,
   }, c.req.raw.cf as IncomingRequestCfProperties)
 
   // Proxy the request to allow Hono's body parsers to work with oRPC

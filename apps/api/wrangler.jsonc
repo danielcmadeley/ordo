@@ -35,6 +35,11 @@
 			"binding": "X_CACHE",
 			"id": "53afe7bd3fd04ee5a988867318db3479",
 			"preview_id": "53afe7bd3fd04ee5a988867318db3479"
+		},
+		{
+			"binding": "GOCARDLESS_CACHE",
+			"id": "36df3a9b9d9d4eb9b607ed3f9002553d",
+			"preview_id": "36df3a9b9d9d4eb9b607ed3f9002553d"
 		}
 	],
 	"vectorize": [
@@ -73,7 +78,8 @@
 		"BETTER_AUTH_URL": "https://api.getordo.co",
 		"GOOGLE_CLIENT_ID": "246757812431-a1nev5qn06qt9dqcpiohajmt59kvss3q.apps.googleusercontent.com",
 		"X_CLIENT_ID": "VUJiWTZxN2kwdkgwRC1vOVJ4MVo6MTpjaQ",
-		"X_REDIRECT_URI": "https://api.getordo.co/api/x/callback"
+		"X_REDIRECT_URI": "https://api.getordo.co/api/x/callback",
+		"GOCARDLESS_BASE_URL": "https://bankaccountdata.gocardless.com/api/v2"
 	},
 	"routes": [
 		{

@@ -17,6 +17,11 @@ type XAccountRow = {
   x_user_id: string
 }
 
+type GocardlessRequisitionRow = {
+  institution_name: string | null
+  status: string
+}
+
 async function getSessionUser(env: Bindings, headers: Headers, cf?: IncomingRequestCfProperties): Promise<SessionUser | null> {
   const auth = createAuth(env, cf)
   const session = await auth.api.getSession({ headers })
@@ -43,11 +48,18 @@ export function registerAccountRoutes(app: Hono<{ Bindings: Bindings }>) {
       .bind(user.id)
       .first<XAccountRow>()
 
+    const gcRequisition = await c.env.auth_db
+      .prepare('SELECT institution_name, status FROM gocardless_requisitions WHERE user_id = ? LIMIT 1')
+      .bind(user.id)
+      .first<GocardlessRequisitionRow>()
+
     return c.json({
       googleConnected: Boolean(googleAccount),
       xConnected: Boolean(xAccount),
       xUsername: xAccount?.username,
       xProfilePending: xAccount ? (xAccount.x_user_id === 'me' || xAccount.username === 'connected') : false,
+      gocardlessConnected: gcRequisition?.status === 'linked',
+      gocardlessInstitution: gcRequisition?.institution_name ?? null,
     })
   })
 }

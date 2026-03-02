@@ -6,7 +6,10 @@ const apiBase = import.meta.env.VITE_API_URL || ''
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const client = createORPCClient<any>(
-  new RPCLink({ url: `${apiBase}/rpc` })
+  new RPCLink({
+    url: `${apiBase}/rpc`,
+    fetch: (input, init) => fetch(input, { ...init, credentials: 'include' }),
+  })
 )
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

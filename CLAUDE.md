@@ -20,7 +20,12 @@ packages/
   shared/       # @ordo/shared — shared schemas
   design-system/ # @ordo/design-system — shared UI + styles + theme infra
 drizzle/        # DB migrations
+examples/       # Reference-only example projects (NOT part of Ordo)
 ```
+
+## Examples Directory
+
+The `examples/` directory contains **reference-only** example projects (e.g. `examples/gocardless`). These are used purely as context and inspiration for building Ordo — they are **not** part of the Ordo application, are not included in any workspace, and no code from `examples/` should be imported, used, or deployed as part of Ordo.
 
 ## Package Manager
 
@@ -67,8 +72,12 @@ bun run deploy:api    # Deploy API to Cloudflare Workers
 | `apps/api/src/auth/index.ts` | BetterAuth server config |
 | `apps/api/src/accounts/routes.ts` | Connected account status endpoint (`/api/accounts/status`) |
 | `apps/api/src/x/routes.ts` | X OAuth + CRM integration routes |
+| `apps/api/src/gocardless/client.ts` | GoCardless API client (KV-cached JWT token) |
+| `apps/api/src/gocardless/cache.ts` | Account data cache layer (KV-backed, scope TTLs) |
+| `apps/api/src/gocardless/routes.ts` | GoCardless bank connect/callback redirect routes |
+| `apps/web/src/routes/finance.tsx` | Finance page — bank connection, balances, transactions |
 | `apps/api/src/sync/client-ws.ts` | LiveStore WebSocket sync via Durable Objects |
-| `apps/api/src/orpc/router.ts` | oRPC router |
+| `apps/api/src/orpc/router.ts` | oRPC router (includes GoCardless data endpoints) |
 | `packages/shared/src/livestore-schema.ts` | LiveStore events/tables/state |
 | `packages/shared/src/auth-schema.ts` | Drizzle schema for BetterAuth |
 | `apps/api/wrangler.jsonc` | Cloudflare Workers config |
@@ -94,6 +103,16 @@ bun run deploy:api    # Deploy API to Cloudflare Workers
 - Word count + last edited metadata is rendered in the global desktop bottom nav; on mobile, it falls back to the global top nav.
 - Editor body uses `SimpleEditor` in borderless mode with placeholder text: `Start writing your note...`.
 
+## GoCardless / Finance Notes
+
+- GoCardless uses **app-level API credentials** (secret_id + secret_key → JWT), not per-user OAuth tokens.
+- The per-user element is a **requisition** (bank authorization link) stored in `gocardless_requisitions` D1 table.
+- Data endpoints (institutions, accounts, balances, transactions, details, disconnect) are oRPC routes consumed via TanStack Query on the frontend.
+- Bank connect/callback flows use raw Hono redirect routes (same pattern as X OAuth).
+- Account data is cached in KV with scope-based TTLs: details=24h, balances=15min, transactions=30min.
+- Stale cache is served as fallback on 429 rate limit responses.
+- Connected status is included in `/api/accounts/status` (`gocardlessConnected`, `gocardlessInstitution`).
+
 ## Environment Setup
 
 Root `.env` (for Drizzle migrations):
@@ -113,6 +132,9 @@ X_CLIENT_ID=...                         # X OAuth 2.0 Client ID (not API Key)
 X_CLIENT_SECRET=...                     # X OAuth 2.0 Client Secret
 X_REDIRECT_URI=http://localhost:3000/api/x/callback
 X_SCOPES=tweet.read tweet.write users.read bookmark.read offline.access
+GOCARDLESS_SECRET_ID=...                # GoCardless API secret ID
+GOCARDLESS_SECRET_KEY=...               # GoCardless API secret key
+GOCARDLESS_BASE_URL=https://bankaccountdata.gocardless.com/api/v2
 ```
 
 ### X OAuth Notes (CRM)
