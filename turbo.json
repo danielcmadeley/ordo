@@ -1,33 +1,25 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**", ".vite/**", "out/**"]
     },
-    "typecheck": {
-      "dependsOn": ["^typecheck"],
-      "outputs": []
+    "lint": {
+      "inputs": ["$TURBO_DEFAULT$", "biome.jsonc"]
+    },
+    "format": {
+      "cache": false,
+      "inputs": ["$TURBO_DEFAULT$", "biome.jsonc"]
+    },
+    "check-types": {
+      "dependsOn": ["^check-types"]
     },
     "dev": {
       "cache": false,
       "persistent": true
-    },
-    "dev:pwa": {
-      "cache": false,
-      "persistent": true
-    },
-    "deploy": {
-      "cache": false,
-      "outputs": []
-    },
-    "db:generate": {
-      "cache": false,
-      "outputs": []
-    },
-    "db:migrate": {
-      "cache": false,
-      "outputs": []
     }
   }
 }

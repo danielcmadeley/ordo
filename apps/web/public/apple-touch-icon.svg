@@ -1,7 +1,0 @@
-<!-- This is a placeholder SVG for apple-touch-icon -->
-<!-- Replace with a proper 180x180 PNG icon for production -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
-  <rect width="180" height="180" rx="40" fill="#3b82f6"/>
-  <path d="M45 67h90M45 90h67M45 113h45" stroke="white" stroke-width="12" stroke-linecap="round"/>
-  <circle cx="123" cy="113" r="17" fill="white"/>
-</svg>

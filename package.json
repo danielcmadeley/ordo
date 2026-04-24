@@ -1,29 +1,26 @@
 {
   "name": "ordo",
   "private": true,
-  "type": "module",
-  "packageManager": "bun@1.2.17",
+  "version": "0.0.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "check-types": "turbo run check-types"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.13",
+    "turbo": "^2.9.6",
+    "typescript": "5.9.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "bun@1.3.13",
   "workspaces": [
     "apps/*",
     "packages/*"
-  ],
-  "scripts": {
-    "dev": "turbo run dev",
-    "dev:pwa": "turbo run dev:pwa",
-    "dev:web": "turbo run dev --filter=@ordo/web",
-    "dev:api": "turbo run dev --filter=@ordo/api",
-    "build": "turbo run build",
-    "typecheck": "turbo run typecheck",
-    "deploy:api": "turbo run deploy --filter=@ordo/api",
-    "db:generate": "turbo run db:generate --filter=@ordo/api",
-    "db:migrate": "turbo run db:migrate --filter=@ordo/api"
-  },
-  "devDependencies": {
-    "dotenv": "^17.3.1",
-    "turbo": "^2.5.8",
-    "typescript": "^5.7.2"
-  },
-  "dependencies": {
-    "nuqs": "^2.8.9"
-  }
+  ]
 }

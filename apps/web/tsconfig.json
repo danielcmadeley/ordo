@@ -1,16 +1,7 @@
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/components/ui/*": ["../../packages/design-system/src/ui/*"],
-      "@/components/theme-provider": ["../../packages/design-system/src/theme-provider.tsx"],
-      "@/lib/utils": ["../../packages/design-system/src/lib/utils.ts"],
-      "@/*": ["./src/*"]
-    },
-    "types": ["vite/client"],
-    "jsx": "react-jsx"
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["vite.config.ts"]
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
 }

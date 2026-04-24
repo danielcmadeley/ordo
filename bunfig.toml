@@ -1,5 +1,0 @@
-[install]
-cache = true
-
-[workspace]
-packages = ["apps/*", "packages/*"]
